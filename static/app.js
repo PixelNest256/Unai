@@ -668,15 +668,19 @@ async function send() {
   userPreviewEl.remove();
 
   // Fetch the session to get the proper turn_id
+  // ただし no_match のときはサーバー側でターンが保存されているので
+  // 通常ルートと同じく sess.turns から取得する
   try {
-    const sr      = await fetch(`/api/sessions/${currentSessionId}`);
-    const sess    = await sr.json();
+    const sr       = await fetch(`/api/sessions/${currentSessionId}`);
+    const sess     = await sr.json();
     const lastTurn = sess.turns[sess.turns.length - 1];
 
-    if (lastTurn) {
+    // lastTurn のユーザー入力が今回の text と一致する場合のみ使う
+    // 一致しない = 保存に失敗した or 別のターンが末尾 → フォールバック描画
+    const lastUserContent = lastTurn?.branch?.user?.content;
+    if (lastTurn && lastUserContent === text) {
       renderTurn(lastTurn, toggleStreaming.checked);
     } else {
-      // Fallback
       const resp = finalData && finalData.response ? finalData.response : 'No response.';
       appendMsgFallback('user', text);
       appendMsgFallback('bot', resp, finalData);
@@ -688,6 +692,7 @@ async function send() {
   } catch (err) {
     console.error('Session fetch error:', err);
     const resp = finalData && finalData.response ? finalData.response : 'Error';
+    appendMsgFallback('user', text);
     appendMsgFallback('bot', resp);
   }
 

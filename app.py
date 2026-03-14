@@ -18,6 +18,25 @@ from unai_core import (
 
 app = Flask(__name__)
 
+SETTINGS_FILE = os.path.join(UNAI_DIR, "settings.json")
+
+# ─── settings.json helpers ───────────────────────────────────────
+
+def load_settings() -> dict:
+    defaults = {"preload_skills": True}
+    if not os.path.exists(SETTINGS_FILE):
+        return defaults
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {**defaults, **data}
+    except Exception:
+        return defaults
+
+def save_settings(data: dict):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
 # ─── process のラッパー（Web UI 向け） ───────────────────────────
 
 def _process_for_web(user_input: str) -> dict:
@@ -53,6 +72,15 @@ def chat_sse():
                 final_result = {k: v for k, v in event.items() if k != "phase"}
                 if final_result.get("response") is None:
                     final_result["response"] = NO_SKILL_MESSAGE
+            elif event["phase"] == "no_match":
+                # どの Skill にもマッチしなかった場合もセッションに保存するため result を作る
+                final_result = {
+                    "response":   NO_SKILL_MESSAGE,
+                    "skill":      None,
+                    "tokens":     0,
+                    "elapsed_ms": 0,
+                    "tps":        0,
+                }
             yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
 
         # セッション保存
@@ -88,6 +116,26 @@ def chat_sse():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/skills")
+def skills_page():
+    return render_template("skills.html")
+
+# ─── Routes: app settings ────────────────────────────────────────
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    return jsonify(load_settings())
+
+@app.route("/api/settings", methods=["POST"])
+def update_settings():
+    data     = request.get_json()
+    settings = load_settings()
+    settings.update(data)
+    save_settings(settings)
+    if settings.get("preload_skills"):
+        warm_skill_cache()
+    return jsonify({"ok": True, **settings})
 
 # ─── Routes: chat ────────────────────────────────────────────────
 
@@ -395,7 +443,12 @@ def reorder_skills():
 # ─── Entry point ─────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    loaded = warm_skill_cache()
-    print(f"Unai Web UI starting at http://localhost:5000")
-    print(f"  Preloaded {len(loaded)} skill(s): {', '.join(loaded)}")
+    settings = load_settings()
+    if settings.get("preload_skills", True):
+        loaded = warm_skill_cache()
+        print(f"Unai Web UI starting at http://localhost:5000")
+        print(f"  Preloaded {len(loaded)} skill(s): {', '.join(loaded)}")
+    else:
+        print("Unai Web UI starting at http://localhost:5000")
+        print("  Skill preloading disabled")
     app.run(debug=False, port=5000)

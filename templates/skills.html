@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skills — Unai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  <style>
+    /* ── Skills page layout ── */
+    body { overflow: auto; }
+
+    #skills-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ── */
+    .skills-topbar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .btn-back {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+    }
+    .btn-back:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
+
+    .skills-topbar-title {
+      font-family: var(--sans);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .skills-topbar-hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Main content ── */
+    .skills-content {
+      flex: 1;
+      max-width: 780px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 36px 32px 60px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Skill list ── */
+    #skill-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 48px;
+    }
+
+    .skill-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: default;
+      transition: border-color var(--transition), background var(--transition), opacity var(--transition);
+      user-select: none;
+    }
+
+    .skill-row.dragging {
+      opacity: 0.4;
+    }
+
+    .skill-row.drag-over {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .skill-row.disabled-row {
+      opacity: 0.45;
+    }
+
+    /* drag handle */
+    .drag-handle {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      cursor: grab;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle:hover .drag-dot-row { opacity: 1; }
+
+    .drag-dot-row {
+      display: flex;
+      gap: 3px;
+      opacity: 0.3;
+      transition: var(--transition);
+    }
+    .drag-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    /* priority badge */
+    .priority-badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
+      min-width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    /* skill info */
+    .skill-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .skill-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+    }
+
+    .skill-display-name {
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .skill-id-tag {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-family: var(--mono);
+    }
+
+    .skill-ext-badge {
+      font-size: 10px;
+      color: var(--accent-dim);
+      border: 1px solid var(--accent-dim);
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-family: var(--mono);
+      opacity: 0.8;
+    }
+
+    .skill-meta-row {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .skill-desc {
+      font-size: 12px;
+      color: var(--text2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* toggle */
+    .skill-toggle { flex-shrink: 0; }
+
+    /* ── Divider between sections ── */
+    .skills-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 36px 0;
+    }
+
+    /* ── Preload setting row ── */
+    .preload-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .preload-info { flex: 1; min-width: 0; }
+    .preload-name {
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .preload-desc {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Save indicator ── */
+    #save-indicator {
+      position: fixed;
+      bottom: 28px;
+      right: 32px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      background: var(--surface);
+      border: 1px solid var(--accent-dim);
+      border-radius: 99px;
+      padding: 5px 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 20;
+    }
+    #save-indicator.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<div id="skills-page">
+
+  <!-- ── Top bar ── -->
+  <div class="skills-topbar">
+    <a href="/" class="btn-back">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M8 1L3 6l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </a>
+    <span class="skills-topbar-title">Skills</span>
+    <span class="skills-topbar-hint">Drag to reorder · Toggle to enable/disable</span>
+  </div>
+
+  <!-- ── Content ── -->
+  <div class="skills-content">
+
+    <!-- Skills list -->
+    <div class="section-label">Active Skills — priority order</div>
+    <div id="skill-list">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="skills-divider"></div>
+
+    <!-- Preload setting -->
+    <div class="section-label">Performance</div>
+    <div class="preload-row">
+      <div class="preload-info">
+        <div class="preload-name">Skill preloading</div>
+        <div class="preload-desc">
+          Load all enabled Skills into memory at startup.<br>
+          Eliminates the delay on the first call to each Skill.
+        </div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-preload" checked>
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+  </div>
+</div>
+
+<div id="save-indicator">Saved</div>
+
+<script>
+/* ── Theme (inherit from localStorage) ── */
+const prefs = (() => { try { return JSON.parse(localStorage.getItem('unai_prefs')) || {}; } catch { return {}; } })();
+document.documentElement.setAttribute('data-theme', prefs.theme || 'dark');
+
+/* ── Save indicator ── */
+const saveInd = document.getElementById('save-indicator');
+let saveTimer;
+function flashSaved() {
+  saveInd.classList.add('show');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveInd.classList.remove('show'), 1600);
+}
+
+/* ── Drag & Drop state ── */
+let dragSrcId = null;
+let skillOrder = [];   // current order of skill IDs
+
+/* ── Render skill list ── */
+function renderSkills(skills) {
+  skillOrder = skills.map(s => s.id);
+  const list = document.getElementById('skill-list');
+  list.innerHTML = '';
+
+  skills.forEach((skill, idx) => {
+    const row = document.createElement('div');
+    row.className = 'skill-row' + (skill.enabled ? '' : ' disabled-row');
+    row.dataset.id = skill.id;
+    row.draggable = true;
+
+    const hasExternal = skill.request_urls && skill.request_urls.length > 0;
+
+    row.innerHTML = `
+      <div class="drag-handle" title="Drag to reorder">
+        <div class="drag-dot-row"><div class="drag-dot"></div><div class="drag-dot"></div></div>
+        <div class="drag-dot-row"><div class="drag-dot"></div><div class="drag-dot"></div></div>
+        <div class="drag-dot-row"><div class="drag-dot"></div><div class="drag-dot"></div></div>
+      </div>
+      <span class="priority-badge">#${idx + 1}</span>
+      <div class="skill-info">
+        <div class="skill-name-row">
+          <span class="skill-display-name">${escHtml(skill.name || skill.id)}</span>
+          <span class="skill-id-tag">${escHtml(skill.id)}</span>
+          ${hasExternal ? '<span class="skill-ext-badge">external</span>' : ''}
+        </div>
+        <div class="skill-desc">${escHtml(skill.description || '—')}</div>
+        <div class="skill-meta-row">
+          <span>by ${escHtml(skill.author || 'unknown')}</span>
+          <span>v${escHtml(skill.version || '?')}</span>
+        </div>
+      </div>
+      <label class="toggle skill-toggle">
+        <input type="checkbox" class="skill-enable-toggle" data-id="${skill.id}" ${skill.enabled ? 'checked' : ''}>
+        <span class="toggle-track"></span>
+      </label>
+    `;
+
+    /* ── Enable/Disable toggle ── */
+    row.querySelector('.skill-enable-toggle').addEventListener('change', async (e) => {
+      e.stopPropagation();
+      try {
+        await fetch('/api/skills/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: skill.id }),
+        });
+        row.classList.toggle('disabled-row', !e.target.checked);
+        flashSaved();
+      } catch { e.target.checked = !e.target.checked; }
+    });
+
+    /* ── Drag events ── */
+    row.addEventListener('dragstart', e => {
+      dragSrcId = skill.id;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      document.querySelectorAll('.skill-row').forEach(r => r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (dragSrcId !== skill.id) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (dragSrcId === skill.id) return;
+
+      // Reorder in local array
+      const fromIdx = skillOrder.indexOf(dragSrcId);
+      const toIdx   = skillOrder.indexOf(skill.id);
+      skillOrder.splice(fromIdx, 1);
+      skillOrder.splice(toIdx, 0, dragSrcId);
+
+      // Reload to re-render with updated badges
+      await saveOrder();
+      await loadSkills();
+    });
+
+    list.appendChild(row);
+  });
+}
+
+async function saveOrder() {
+  try {
+    await fetch('/api/skills/reorder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: skillOrder }),
+    });
+    flashSaved();
+  } catch { /* silent */ }
+}
+
+/* ── Load skills from API ── */
+async function loadSkills() {
+  try {
+    const res    = await fetch('/api/skills');
+    const skills = await res.json();
+    renderSkills(skills);
+  } catch { /* silent */ }
+}
+
+/* ── Preload toggle ── */
+const preloadToggle = document.getElementById('toggle-preload');
+
+async function loadPreloadSetting() {
+  try {
+    const res  = await fetch('/api/settings');
+    const data = await res.json();
+    preloadToggle.checked = data.preload_skills !== false;
+  } catch { preloadToggle.checked = true; }
+}
+
+preloadToggle.addEventListener('change', async () => {
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preload_skills: preloadToggle.checked }),
+    });
+    flashSaved();
+  } catch { preloadToggle.checked = !preloadToggle.checked; }
+});
+
+/* ── Utility ── */
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Init ── */
+loadSkills();
+loadPreloadSetting();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿{
+{
   "order": [
     "wikipedia",
     "ddgs",
@@ -6,5 +6,7 @@
     "calc",
     "joke"
   ],
-  "disabled": []
+  "disabled": [
+    "ddgs"
+  ]
 }
