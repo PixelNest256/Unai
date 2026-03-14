@@ -1,6 +1,7 @@
 ﻿{
   "order": [
     "wikipedia",
+    "ddgs",
     "greeting",
     "calc",
     "joke"

@@ -1,0 +1,1 @@
+{"name": "ddgs", "description": "DDGS検索の要約を取得", "author": "unai-core", "version": "1.0.0", "request_urls": ["https://duckduckgo.com/"]}
