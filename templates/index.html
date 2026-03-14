@@ -72,7 +72,7 @@
       <div id="empty-state">
         <div class="empty-logo">
           <div class="empty-glyph">u/</div>
-          <p class="empty-tagline">Your Un-AI Assistant</p>
+          <p class="empty-tagline">Your Non-AI Assistant</p>
         </div>
         <div class="empty-input-wrap">
           <div class="input-shell">
@@ -111,75 +111,75 @@
           <span><kbd>Shift</kbd>+<kbd>Enter</kbd> New line</span>
         </div>
       </div>
-  </div>
+    </div>
 
-  <!-- ═══ SETTINGS PANEL ═══ -->
-  <div id="settings-overlay">
-    <div id="settings-panel">
-      <div class="settings-header">
-        <span class="settings-title">Settings</span>
-        <button class="btn-icon" id="close-settings-btn">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <path d="M1 1l11 11M12 1L1 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-        </button>
-      </div>
-      <div class="settings-body">
+    <!-- ═══ SETTINGS PANEL ═══ -->
+    <div id="settings-overlay">
+      <div id="settings-panel">
+        <div class="settings-header">
+          <span class="settings-title">Settings</span>
+          <button class="btn-icon" id="close-settings-btn">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M1 1l11 11M12 1L1 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div class="settings-body">
 
-        <!-- Appearance -->
-        <div>
-          <div class="settings-section-label">Appearance</div>
+          <!-- Appearance -->
+          <div>
+            <div class="settings-section-label">Appearance</div>
 
-          <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-            <div class="setting-name" style="font-size:13px; color:var(--text);">Theme</div>
-            <div class="theme-picker">
-              <button class="theme-option selected" id="theme-dark" onclick="setTheme('dark')">
-                <div class="theme-swatch swatch-dark"></div>
-                Dark
-              </button>
-              <button class="theme-option" id="theme-light" onclick="setTheme('light')">
-                <div class="theme-swatch swatch-light"></div>
-                Light
-              </button>
+            <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+              <div class="setting-name" style="font-size:13px; color:var(--text);">Theme</div>
+              <div class="theme-picker">
+                <button class="theme-option selected" id="theme-dark" onclick="setTheme('dark')">
+                  <div class="theme-swatch swatch-dark"></div>
+                  Dark
+                </button>
+                <button class="theme-option" id="theme-light" onclick="setTheme('light')">
+                  <div class="theme-swatch swatch-light"></div>
+                  Light
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Behaviour -->
-        <div>
-          <div class="settings-section-label">Behavior</div>
+          <!-- Behaviour -->
+          <div>
+            <div class="settings-section-label">Behavior</div>
 
-          <div class="setting-row">
-            <div class="setting-info">
-              <div class="setting-name">Streaming animation</div>
-              <div class="setting-desc">Reveals responses token by token,<br>mimicking LLM streaming output.</div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-name">Streaming animation</div>
+                <div class="setting-desc">Reveals responses token by token,<br>mimicking LLM streaming output.</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="toggle-streaming" checked>
+                <span class="toggle-track"></span>
+              </label>
             </div>
-            <label class="toggle">
-              <input type="checkbox" id="toggle-streaming" checked>
-              <span class="toggle-track"></span>
-            </label>
           </div>
+
         </div>
-
       </div>
     </div>
-  </div>
 
-  <!-- ═══ CONFIRM DIALOG ═══ -->
-  <div id="confirm-overlay">
-    <div class="confirm-box">
-      <div class="confirm-title" id="confirm-title">Delete chat</div>
-      <div class="confirm-body" id="confirm-body">This conversation will be permanently deleted.</div>
-      <div class="confirm-actions">
-        <button class="btn-cancel" id="cancel-confirm">Cancel</button>
-        <button class="btn-confirm-del" id="do-confirm">Delete</button>
+    <!-- ═══ CONFIRM DIALOG ═══ -->
+    <div id="confirm-overlay">
+      <div class="confirm-box">
+        <div class="confirm-title" id="confirm-title">Delete chat</div>
+        <div class="confirm-body" id="confirm-body">This conversation will be permanently deleted.</div>
+        <div class="confirm-actions">
+          <button class="btn-cancel" id="cancel-confirm">Cancel</button>
+          <button class="btn-confirm-del" id="do-confirm">Delete</button>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="toast"></div>
+    <div id="toast"></div>
 
-  <script src="/static/app.js"></script>
+    <script src="/static/app.js"></script>
 </body>
 
 </html>
