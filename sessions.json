@@ -1,3 +1,56 @@
 {
-  "sessions": []
+  "sessions": [
+    {
+      "id": "c5e1098b-e8b5-46c6-99f7-0393d9029c7b",
+      "title": "search for ascii art",
+      "created_at": "2026-03-14T13:06:49",
+      "updated_at": "2026-03-14T13:06:57",
+      "turns": [
+        {
+          "id": "5fbef731-b0cc-41ad-b00f-57c2186e50bc",
+          "active_branch": 0,
+          "branches": [
+            {
+              "id": "915c85dc-5dd4-4639-b73e-96bca9b8a033",
+              "created_at": "2026-03-14T13:06:52",
+              "user": {
+                "content": "search for ascii art",
+                "ts": "2026-03-14T13:06:52"
+              },
+              "bot": {
+                "content": "【ASCII art】\nASCII art is a graphic design technique that uses computers for presentation and consists of pictures pieced together from the 95 printable (from a total of 128) characters defined by the ASCII Standard from 1963 and ASCII compliant character sets with proprietary extended characters (beyond the 128 characters of standard 7-bit ASCII). The term is also loosely used to refer to text-based visual art in general. ASCII art can be created with any text editor, and is often used with free-form languages.",
+                "skill": "ddgs",
+                "tokens": 105,
+                "elapsed_ms": 2305.3,
+                "tps": 45.5,
+                "ts": "2026-03-14T13:06:52"
+              }
+            }
+          ]
+        },
+        {
+          "id": "e97e2ac3-0db2-42e9-8b7c-09554b37f4e7",
+          "active_branch": 0,
+          "branches": [
+            {
+              "id": "4a9f271f-1bde-4d0c-bd4b-8bd825986b1a",
+              "created_at": "2026-03-14T13:06:57",
+              "user": {
+                "content": "What's ascii art",
+                "ts": "2026-03-14T13:06:57"
+              },
+              "bot": {
+                "content": "【ASCII art】\nASCII art is a graphic design technique that uses computers for presentation and consists of pictures pieced together from the 95 printable characters defined by the ASCII Standard from 1963 and ASCII compliant character sets with proprietary extended characters. The term is also loosely used to refer to text-based visual art in general.",
+                "skill": "wikipedia",
+                "tokens": 65,
+                "elapsed_ms": 504.1,
+                "tps": 128.9,
+                "ts": "2026-03-14T13:06:57"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

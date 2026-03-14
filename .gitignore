@@ -1,12 +1,6 @@
 # Ignore unai-package directory
 unai-package/
 
-# Ignore static directory
-static/
-
-#Ignore templates directory
-templates/
-
 #md documents used only on development
 unai.md
 

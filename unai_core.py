@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 unai_core.py — Unai の中核ロジック
 
@@ -225,6 +225,47 @@ def process(user_input: str) -> dict:
 
     # 3. どれもマッチしなかった
     return {"response": None, "skill": None, "tokens": 0, "elapsed_ms": 0, "tps": 0}
+
+# ─── 進捗付きジェネレーター ──────────────────────────────────────
+
+def process_streamed(user_input: str):
+    """
+    Skill のマッチング・実行過程をジェネレーターで逐次 yield する。
+    各 yield は辞書:
+      {"phase": "matching", "skill": name}          # match() 判定中
+      {"phase": "responding", "skill": name}        # respond() 呼び出し中
+      {"phase": "done", **make_result(...)}           # 完了（通常の結果辞書）
+      {"phase": "no_match"}                          # どれもマッチしなかった
+    """
+    # スラッシュコマンドは進捗なしで即返す
+    slash = process_slash_command(user_input)
+    if slash:
+        yield {"phase": "done", **slash}
+        return
+
+    priority = load_priority()
+    for name in priority["order"]:
+        if name in priority.get("disabled", []):
+            continue
+        mod = load_skill(name)
+        if mod is None:
+            continue
+        try:
+            yield {"phase": "matching", "skill": name}
+            if not mod.match(user_input):
+                continue
+            yield {"phase": "responding", "skill": name}
+            start    = time.perf_counter()
+            response = mod.respond(user_input)
+            elapsed  = time.perf_counter() - start
+            if response is None:
+                continue
+            yield {"phase": "done", **make_result(response, name, elapsed)}
+            return
+        except Exception:
+            continue
+
+    yield {"phase": "no_match"}
 
 # ─── sessions.json ────────────────────────────────────────────────
 

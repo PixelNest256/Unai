@@ -1,12 +1,12 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unai Web UI - Flask server"""
 
-from flask import Flask, request, jsonify, render_template
-import os, uuid
+from flask import Flask, request, jsonify, render_template, Response, stream_with_context
+import os, uuid, json
 from datetime import datetime
 
 from unai_core import (
-    process,
+    process, process_streamed,
     load_priority, save_priority,
     get_all_skills,
     load_sessions, save_sessions,
@@ -28,6 +28,59 @@ def _process_for_web(user_input: str) -> dict:
     if result["response"] is None:
         result["response"] = NO_SKILL_MESSAGE
     return result
+
+# ─── SSE: chat with progress ────────────────────────────────────
+
+@app.route("/api/chat/sse", methods=["POST"])
+def chat_sse():
+    """
+    Server-Sent Events エンドポイント。
+    Skill マッチング・レスポンス生成の進捗を逐次 SSE で返す。
+    Body: { message, session_id }
+    """
+    data       = request.get_json()
+    user_input = data.get("message", "").strip()
+    session_id = data.get("session_id", "").strip()
+
+    if not user_input:
+        return jsonify({"error": "empty"}), 400
+
+    def generate():
+        final_result = None
+        for event in process_streamed(user_input):
+            if event["phase"] == "done":
+                final_result = {k: v for k, v in event.items() if k != "phase"}
+                if final_result.get("response") is None:
+                    final_result["response"] = NO_SKILL_MESSAGE
+            yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+
+        # セッション保存
+        if final_result and session_id:
+            now = __import__("datetime").datetime.now().isoformat(timespec="seconds")
+            sessions = load_sessions()
+            sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+            if sess:
+                if "messages" in sess and "turns" not in sess:
+                    sess = migrate_session(sess)
+                branch   = make_branch(user_input, final_result, now)
+                new_turn = {
+                    "id":            __import__("uuid").uuid4().__str__(),
+                    "active_branch": 0,
+                    "branches":      [branch],
+                }
+                sess.setdefault("turns", []).append(new_turn)
+                sess["updated_at"] = now
+                if sess.get("title") in ("New Chat", "新しいチャット", "") and len(sess["turns"]) == 1:
+                    first = user_input[:30] + ("…" if len(user_input) > 30 else "")
+                    sess["title"] = first
+                for i, s in enumerate(sessions["sessions"]):
+                    if s["id"] == session_id:
+                        sessions["sessions"][i] = sess
+                        break
+                save_sessions(sessions)
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 # ─── Routes: pages ───────────────────────────────────────────────
 
@@ -275,6 +328,21 @@ def delete_session(session_id):
     sessions["sessions"] = [s for s in sessions["sessions"] if s["id"] != session_id]
     save_sessions(sessions)
     return jsonify({"ok": True})
+
+
+@app.route("/api/sessions/<session_id>/rename", methods=["POST"])
+def rename_session(session_id):
+    data  = request.get_json()
+    title = data.get("title", "").strip()
+    if not title:
+        return jsonify({"error": "empty title"}), 400
+    sessions = load_sessions()
+    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+    if not sess:
+        return jsonify({"error": "not found"}), 404
+    sess["title"] = title
+    save_sessions(sessions)
+    return jsonify({"ok": True, "title": title})
 
 # ─── Routes: skills ──────────────────────────────────────────────
 
