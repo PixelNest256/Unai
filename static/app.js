@@ -1,4 +1,4 @@
-/* ── DOM refs ─────────────────────────────────── */
+﻿/* ── DOM refs ─────────────────────────────────── */
 const chatEl        = document.getElementById('chat');
 const emptyEl       = document.getElementById('empty-state');
 const inputAreaEl   = document.getElementById('input-area');
@@ -445,6 +445,7 @@ async function regenerateTurn(turn_id, bar, userBubble, botBubble, metaEl) {
   ind.innerHTML = '<span></span><span></span><span></span>';
   botBubble.appendChild(ind);
 
+  const regenStart = performance.now();
   try {
     const res  = await fetch('/api/chat/regenerate', {
       method: 'POST',
@@ -452,6 +453,7 @@ async function regenerateTurn(turn_id, bar, userBubble, botBubble, metaEl) {
       body: JSON.stringify({ session_id: currentSessionId, turn_id }),
     });
     const data = await res.json();
+    data.wallMs = Math.round(performance.now() - regenStart);
     botBubble.innerHTML = '';
     const nav = bar.querySelector('.branch-nav');
     updateBranchNav(nav, data.branch_index, data.branch_count, turn_id, userBubble, botBubble, metaEl);
@@ -515,6 +517,7 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
   ind.innerHTML = '<span></span><span></span><span></span>';
   botBubble.appendChild(ind);
 
+  const editStart = performance.now();
   try {
     const res  = await fetch('/api/chat/edit', {
       method: 'POST',
@@ -522,6 +525,7 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
       body: JSON.stringify({ session_id: currentSessionId, turn_id, message: newText }),
     });
     const data = await res.json();
+    data.wallMs = Math.round(performance.now() - editStart);
 
     if (data.truncated_after) removeTurnsAfter(turn_id);
 
@@ -615,6 +619,7 @@ async function send() {
   scrollBottom();
 
   let finalData = null;
+  const sendTime = performance.now();
 
   try {
     const res = await fetch('/api/chat/sse', {
@@ -643,6 +648,7 @@ async function send() {
           setProgress(progressInner, event.phase, event.skill);
         } else if (event.phase === 'done' || event.phase === 'no_match') {
           finalData = event;
+          if (finalData) finalData.wallMs = Math.round(performance.now() - sendTime);
           break outer;
         }
       }
@@ -738,7 +744,7 @@ function buildMetaEl(bot) {
   if (bot && bot.tokens !== undefined) {
     const stat = document.createElement('span');
     stat.className   = 'stat';
-    stat.textContent = `${bot.tokens} tok · ${bot.elapsed_ms}ms · ${bot.tps} t/s`;
+    stat.textContent = `${bot.tokens} tok · ${bot.wallMs ?? bot.elapsed_ms}ms · ${bot.tps} t/s`;
     metaEl.appendChild(stat);
   }
   return metaEl;
@@ -758,7 +764,7 @@ function updateMetaEl(metaEl, bot) {
   if (bot.tokens !== undefined) {
     const stat = document.createElement('span');
     stat.className   = 'stat';
-    stat.textContent = `${bot.tokens} tok · ${bot.elapsed_ms}ms · ${bot.tps} t/s`;
+    stat.textContent = `${bot.tokens} tok · ${bot.wallMs ?? bot.elapsed_ms}ms · ${bot.tps} t/s`;
     metaEl.appendChild(stat);
   }
 }

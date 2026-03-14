@@ -12,6 +12,7 @@ from unai_core import (
     load_sessions, save_sessions,
     make_branch, get_active_path, migrate_session,
     NO_SKILL_MESSAGE,
+    warm_skill_cache, invalidate_skill_cache,
     UNAI_DIR,
 )
 
@@ -376,6 +377,8 @@ def toggle_skill():
         disabled.append(skill_id)
     priority["disabled"] = disabled
     save_priority(priority)
+    invalidate_skill_cache(skill_id)  # 有効/無効が変わったので再ロードさせる
+    warm_skill_cache()                # 有効な Skill を即座に再キャッシュ
     return jsonify({"ok": True, "disabled": disabled})
 
 
@@ -386,10 +389,13 @@ def reorder_skills():
     priority  = load_priority()
     priority["order"] = new_order
     save_priority(priority)
+    warm_skill_cache()  # 優先順位変更後もキャッシュは有効なので再温めだけ
     return jsonify({"ok": True})
 
 # ─── Entry point ─────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("Unai Web UI starting at http://localhost:5000")
+    loaded = warm_skill_cache()
+    print(f"Unai Web UI starting at http://localhost:5000")
+    print(f"  Preloaded {len(loaded)} skill(s): {', '.join(loaded)}")
     app.run(debug=False, port=5000)

@@ -1,7 +1,7 @@
 ﻿"""Greeting & small talk skill using rule-based matching + Levenshtein distance"""
 
 RULES = [
-    (["hello", "hi", "hey"],
+    (["hello", "hi", "hey", "yoo"],
      ["Hello! Is there anything I can help you with?", "Hey! How are you?", "Hello!"]),
     (["good morning"],
      ["Good morning! Have a great day today.", "Good morning!"]),
@@ -13,6 +13,12 @@ RULES = [
      ["I'm doing well! How about you?"]),
     (["bye", "goodbye"],
      ["See you later! Have a great day!", "Goodbye! Come back anytime."]),
+    (["what's up", "whats up"],
+     ["Not much, just here to help!"]),
+    (["who are you", "what are you"],
+     ["I'm Unai, your Non-AI assistant!"]),
+    (["what can you do", "what are your capabilities"],
+     ["I can help you with basic questions, greetings, and small talk. See more by typing /help"]),
 ]
 
 import random

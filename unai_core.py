@@ -37,15 +37,48 @@ def save_priority(data: dict):
 
 # ─── Skill ロード ────────────────────────────────────────────────
 
+# モジュールキャッシュ: { skill_name -> module }
+# 同一プロセス内では importlib によるファイル読み込みを一度だけ行う。
+_skill_cache: dict[str, object] = {}
+
 def load_skill(skill_name: str):
-    """skill.py をインポートしてモジュールを返す。存在しなければ None。"""
+    """skill.py をインポートしてモジュールを返す。キャッシュ済みならそれを返す。"""
+    if skill_name in _skill_cache:
+        return _skill_cache[skill_name]
     skill_path = os.path.join(SKILLS_DIR, skill_name, "skill.py")
     if not os.path.exists(skill_path):
         return None
     spec = importlib.util.spec_from_file_location(skill_name, skill_path)
     mod  = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    _skill_cache[skill_name] = mod
     return mod
+
+def warm_skill_cache() -> list[str]:
+    """
+    priority.json の有効な Skill を全て先読みしてキャッシュに格納する。
+    起動時に一度だけ呼ぶことで、最初のリクエストの遅延をなくす。
+    ロードできた Skill 名のリストを返す。
+    """
+    priority = load_priority()
+    loaded = []
+    for name in priority["order"]:
+        if name in priority.get("disabled", []):
+            continue
+        if load_skill(name) is not None:
+            loaded.append(name)
+    return loaded
+
+def invalidate_skill_cache(skill_name: str | None = None):
+    """
+    キャッシュを無効化する。
+    skill_name を指定した場合はその Skill のみ、None の場合は全件削除。
+    toggle や reorder 後に呼んで再ロードを促す。
+    """
+    if skill_name is None:
+        _skill_cache.clear()
+    else:
+        _skill_cache.pop(skill_name, None)
 
 def load_meta(skill_name: str) -> dict:
     """meta.json を読んで辞書を返す。存在しなければデフォルト値。"""

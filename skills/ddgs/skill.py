@@ -1,10 +1,9 @@
 """DDGS (DuckDuckGo Search) summary skill"""
 import re
-import unai
 from ddgs import DDGS
 
 _TRIGGERS = re.compile(
-    r'(search|find|look up|ddgs)',
+    r'(search|find|look up|ddgs|what is|what\'s|who is|who\'s|tell me about)',
     re.IGNORECASE
 )
 
@@ -18,6 +17,11 @@ def _clean(text):
         r'find\s+(.+?)(?:\?|$)',
         r'look up\s+(.+?)(?:\?|$)',
         r'ddgs\s+(.+?)(?:\?|$)',
+        r'what is\s+(.+?)(?:\?|$)',
+        r'what\'s\s+(.+?)(?:\?|$)',
+        r'who is\s+(.+?)(?:\?|$)',
+        r'who\'s\s+(.+?)(?:\?|$)',
+        r'tell me about\s+(.+?)(?:\?|$)',
     ]
     for p in patterns:
         m = re.search(p, text.strip(), re.IGNORECASE)
