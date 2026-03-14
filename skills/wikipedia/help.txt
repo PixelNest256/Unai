@@ -1,0 +1,17 @@
+Wikipedia Skill
+
+This skill searches Wikipedia and provides article summaries.
+
+Examples:
+- "What is Python?"
+- "Tell me about Albert Einstein"
+- "アインシュタインについて"
+- "Pythonとは何ですか"
+
+The skill:
+- Searches Wikipedia for relevant articles
+- Provides concise summaries of articles
+- Supports both English and Japanese queries
+- Accesses only ja.wikipedia.org
+
+Note: This skill requires internet connection to fetch Wikipedia data.

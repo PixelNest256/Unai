@@ -1,0 +1,17 @@
+Joke Skill
+
+This skill tells random jokes from a predefined collection.
+
+Examples:
+- "tell me a joke"
+- "joke"
+- "make me laugh"
+- "ジョークを言って"
+
+The skill:
+- Selects random jokes from its collection
+- Supports both English and Japanese requests
+- Provides family-friendly humor
+- Works completely offline
+
+Just ask for a joke and enjoy!

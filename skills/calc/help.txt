@@ -1,0 +1,20 @@
+Calc Skill
+
+This skill performs mathematical calculations and equation solving using SymPy.
+
+Examples:
+- Basic calculations: "3 + 4 * 2"
+- Equation solving: "solve: x^2 - 4"
+- Expression expansion: "expand: (x+1)^2"
+- Complex expressions: "2*sin(pi/4) + sqrt(16)"
+
+Supported operations:
+- Basic arithmetic: +, -, *, /
+- Trigonometric functions: sin, cos, tan
+- Logarithms: log, ln
+- Square roots: sqrt
+- Equation solving with "solve:"
+- Expression expansion with "expand:"
+- And many more mathematical functions
+
+The skill shows step-by-step solutions for complex calculations.
