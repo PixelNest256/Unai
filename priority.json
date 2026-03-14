@@ -6,7 +6,5 @@
     "calc",
     "joke"
   ],
-  "disabled": [
-    "ddgs"
-  ]
+  "disabled": []
 }
