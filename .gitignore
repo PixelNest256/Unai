@@ -4,6 +4,9 @@ unai-package/
 # Ignore static directory
 static/
 
+#Ignore templates directory
+templates/
+
 # Python cache and compiled files
 __pycache__/
 *.py[cod]
@@ -44,5 +47,5 @@ ENV/
 Thumbs.db
 
 # Session files
-sessions.json
-priority.json
+#sessions.json
+#priority.json
