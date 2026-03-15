@@ -63,7 +63,6 @@ Skills are tried in the order defined in `priority.json`. The first one whose `m
 unai/
 ├── app.py              # Flask web server
 ├── unai_core.py        # Core logic
-├── priority.json       # Skill priority order and enabled/disabled state
 ├── sessions.db         # SQLite chat history
 ├── settings.json       # App settings (auto-generated)
 ├── templates/
@@ -73,6 +72,7 @@ unai/
 │   ├── app.js          # Frontend logic
 │   └── styles.css      # Styles
 └── skills/
+    ├── priority.json   # Skill priority order and enabled/disabled state
     ├── calc/
     ├── greeting/
     ├── joke/
@@ -214,7 +214,7 @@ POST /api/skills/reorder  { "order": ["greeting", "calc", "joke"] }
 
 ## Configuration
 
-**`priority.json`** — managed automatically by the UI, but editable by hand:
+**`skills/priority.json`** — managed automatically by the UI, but editable by hand:
 
 ```json
 {

@@ -22,7 +22,7 @@ from datetime import datetime
 
 UNAI_DIR      = os.path.dirname(os.path.abspath(__file__))
 SKILLS_DIR    = os.path.join(UNAI_DIR, "skills")
-PRIORITY_FILE = os.path.join(UNAI_DIR, "priority.json")
+PRIORITY_FILE = os.path.join(SKILLS_DIR, "priority.json")
 DB_FILE = os.path.join(UNAI_DIR, "sessions.db")
 
 # Fallback message when no Skill matches
