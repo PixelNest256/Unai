@@ -423,6 +423,27 @@ def import_skill():
 
     zf.extractall(SKILLS_DIR)
 
+    # Install dependencies from requirements.txt if present
+    req_key  = f"{skill_id}/requirements.txt"
+    pip_result = None
+    if req_key in present:
+        import subprocess, sys
+        req_path = os.path.join(SKILLS_DIR, skill_id, "requirements.txt")
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", req_path,
+                 "--break-system-packages"],
+                capture_output=True, text=True, timeout=120
+            )
+            if proc.returncode == 0:
+                pip_result = {"ok": True, "output": proc.stdout.strip()}
+            else:
+                pip_result = {"ok": False, "output": (proc.stderr or proc.stdout).strip()}
+        except subprocess.TimeoutExpired:
+            pip_result = {"ok": False, "output": "pip install timed out (120s)"}
+        except Exception as e:
+            pip_result = {"ok": False, "output": str(e)}
+
     # Refresh skill cache
     invalidate_skill_cache(skill_id)
     priority = load_priority()
@@ -431,7 +452,12 @@ def import_skill():
         save_priority(priority)
     warm_skill_cache()
 
-    return jsonify({"ok": True, "skill_id": skill_id, "updated": already_exists})
+    return jsonify({
+        "ok":       True,
+        "skill_id": skill_id,
+        "updated":  already_exists,
+        "pip":      pip_result,   # None if no requirements.txt
+    })
 
 
 @app.route("/api/skills/<skill_id>", methods=["DELETE"])

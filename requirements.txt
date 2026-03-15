@@ -1,0 +1,4 @@
+flask>=2.0.0
+tiktoken>=0.5.0
+duckduckgo-search>=3.0.0
+sympy>=1.10.0

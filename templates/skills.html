@@ -314,7 +314,8 @@
       font-family: var(--mono);
     }
     .import-status.ok  { color: var(--accent); }
-    .import-status.err { color: var(--danger); }
+    .import-status.err  { color: var(--danger); }
+    .import-status.warn { color: #f0a500; }
 
     /* ── Confirm overlay (reuse existing styles but add scoped ids) ── */
     #delete-overlay.open { display: flex !important; }
@@ -650,7 +651,14 @@ document.getElementById('import-file').addEventListener('change', async (e) => {
     const res  = await fetch('/api/skills/import', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.ok) {
-      showImportStatus(data.updated ? `Updated: ${data.skill_id}` : `Installed: ${data.skill_id}`, 'ok');
+      let msg = data.updated ? `Updated: ${data.skill_id}` : `Installed: ${data.skill_id}`;
+      if (data.pip) {
+        msg += data.pip.ok ? '  (deps installed)' : '  ⚠ deps failed';
+      }
+      showImportStatus(msg, data.pip && !data.pip.ok ? 'warn' : 'ok');
+      if (data.pip && !data.pip.ok) {
+        console.warn('pip install output:', data.pip.output);
+      }
       await loadSkills();
     } else {
       showImportStatus('Error: ' + (data.error || 'unknown'), 'err');
