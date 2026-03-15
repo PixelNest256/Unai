@@ -45,5 +45,5 @@ Thumbs.db
 
 # Session files
 #sessions.json
-#priority.json
+priority.json
 sessions.db*
