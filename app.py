@@ -9,14 +9,19 @@ from unai_core import (
     process, process_streamed,
     load_priority, save_priority,
     get_all_skills,
-    load_sessions, save_sessions,
-    make_branch, get_active_path, migrate_session,
+    make_branch,
     NO_SKILL_MESSAGE,
     warm_skill_cache, invalidate_skill_cache,
     UNAI_DIR,
+    init_db,
+    db_list_sessions, db_create_session, db_get_session, db_delete_session, db_rename_session,
+    db_append_turn, db_add_branch, db_set_active_branch, db_truncate_turns_after, db_auto_title,
 )
 
 app = Flask(__name__)
+
+# Initialize database
+init_db()
 
 SETTINGS_FILE = os.path.join(UNAI_DIR, "settings.json")
 
@@ -85,28 +90,13 @@ def chat_sse():
 
         # セッション保存
         if final_result and session_id:
-            now = __import__("datetime").datetime.now().isoformat(timespec="seconds")
-            sessions = load_sessions()
-            sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+            now = datetime.now().isoformat(timespec="seconds")
+            sess = db_get_session(session_id)
             if sess:
-                if "messages" in sess and "turns" not in sess:
-                    sess = migrate_session(sess)
-                branch   = make_branch(user_input, final_result, now)
-                new_turn = {
-                    "id":            __import__("uuid").uuid4().__str__(),
-                    "active_branch": 0,
-                    "branches":      [branch],
-                }
-                sess.setdefault("turns", []).append(new_turn)
-                sess["updated_at"] = now
-                if sess.get("title") in ("New Chat", "", "") and len(sess["turns"]) == 1:
-                    first = user_input[:30] + ("…" if len(user_input) > 30 else "")
-                    sess["title"] = first
-                for i, s in enumerate(sessions["sessions"]):
-                    if s["id"] == session_id:
-                        sessions["sessions"][i] = sess
-                        break
-                save_sessions(sessions)
+                turn_result = db_append_turn(session_id, user_input, final_result, now)
+                # Auto-title from first user message
+                if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
+                    db_auto_title(session_id, user_input, now)
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -155,31 +145,12 @@ def chat():
     now    = datetime.now().isoformat(timespec="seconds")
 
     if session_id:
-        sessions = load_sessions()
-        sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+        sess = db_get_session(session_id)
         if sess:
-            if "messages" in sess and "turns" not in sess:
-                sess = migrate_session(sess)
-
-            branch   = make_branch(user_input, result, now)
-            new_turn = {
-                "id":            str(uuid.uuid4()),
-                "active_branch": 0,
-                "branches":      [branch],
-            }
-            sess.setdefault("turns", []).append(new_turn)
-            sess["updated_at"] = now
-
+            turn_result = db_append_turn(session_id, user_input, result, now)
             # Auto-title from first user message
-            if sess.get("title") in ("New Chat", "", "") and len(sess["turns"]) == 1:
-                first = user_input[:30] + ("…" if len(user_input) > 30 else "")
-                sess["title"] = first
-
-            for i, s in enumerate(sessions["sessions"]):
-                if s["id"] == session_id:
-                    sessions["sessions"][i] = sess
-                    break
-            save_sessions(sessions)
+            if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
+                db_auto_title(session_id, user_input, now)
 
     return jsonify(result)
 
@@ -193,40 +164,26 @@ def regenerate():
     session_id = data.get("session_id", "").strip()
     turn_id    = data.get("turn_id", "").strip()
 
-    sessions = load_sessions()
-    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+    sess = db_get_session(session_id)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
-    if "messages" in sess and "turns" not in sess:
-        sess = migrate_session(sess)
-
-    turn = next((t for t in sess.get("turns", []) if t["id"] == turn_id), None)
+    turn = next((t for t in sess.get("turns", []) if t["turn_id"] == turn_id), None)
     if not turn:
         return jsonify({"error": "turn not found"}), 404
 
-    active_b   = turn["branches"][turn.get("active_branch", 0)]
-    user_input = active_b["user"]["content"]
+    user_input = turn["branch"]["user"]["content"]
 
     result = _process_for_web(user_input)
     now    = datetime.now().isoformat(timespec="seconds")
-    branch = make_branch(user_input, result, now)
-
-    turn["branches"].append(branch)
-    turn["active_branch"] = len(turn["branches"]) - 1
-    sess["updated_at"] = now
-
-    for i, s in enumerate(sessions["sessions"]):
-        if s["id"] == session_id:
-            sessions["sessions"][i] = sess
-            break
-    save_sessions(sessions)
+    
+    branch_result = db_add_branch(session_id, turn_id, user_input, result, now)
 
     return jsonify({
         **result,
-        "branch_index": turn["active_branch"],
-        "branch_count": len(turn["branches"]),
-        "branch_id":    branch["id"],
+        "branch_index": branch_result["branch_index"],
+        "branch_count": branch_result["branch_count"],
+        "branch_id":    branch_result["branch_id"],
     })
 
 
@@ -243,41 +200,27 @@ def edit_message():
     if not user_input:
         return jsonify({"error": "empty"}), 400
 
-    sessions = load_sessions()
-    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+    sess = db_get_session(session_id)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
-    if "messages" in sess and "turns" not in sess:
-        sess = migrate_session(sess)
-
     turns    = sess.get("turns", [])
-    turn_idx = next((i for i, t in enumerate(turns) if t["id"] == turn_id), None)
+    turn_idx = next((i for i, t in enumerate(turns) if t["turn_id"] == turn_id), None)
     if turn_idx is None:
         return jsonify({"error": "turn not found"}), 404
 
     result = _process_for_web(user_input)
     now    = datetime.now().isoformat(timespec="seconds")
-    branch = make_branch(user_input, result, now)
-
-    turn = turns[turn_idx]
-    turn["branches"].append(branch)
-    turn["active_branch"] = len(turn["branches"]) - 1
-
-    sess["turns"]      = turns[:turn_idx + 1]
-    sess["updated_at"] = now
-
-    for i, s in enumerate(sessions["sessions"]):
-        if s["id"] == session_id:
-            sessions["sessions"][i] = sess
-            break
-    save_sessions(sessions)
+    
+    # Truncate turns after this one and add new branch
+    db_truncate_turns_after(session_id, turn_id)
+    branch_result = db_add_branch(session_id, turn_id, user_input, result, now)
 
     return jsonify({
         **result,
-        "branch_index":    turn["active_branch"],
-        "branch_count":    len(turn["branches"]),
-        "branch_id":       branch["id"],
+        "branch_index":    branch_result["branch_index"],
+        "branch_count":    branch_result["branch_count"],
+        "branch_id":       branch_result["branch_id"],
         "truncated_after": turn_id,
     })
 
@@ -292,90 +235,49 @@ def switch_branch():
     turn_id      = data.get("turn_id", "").strip()
     branch_index = int(data.get("branch_index", 0))
 
-    sessions = load_sessions()
-    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+    sess = db_get_session(session_id)
     if not sess:
         return jsonify({"error": "session not found"}), 404
 
-    turn = next((t for t in sess.get("turns", []) if t["id"] == turn_id), None)
+    turn = next((t for t in sess.get("turns", []) if t["turn_id"] == turn_id), None)
     if not turn:
         return jsonify({"error": "turn not found"}), 404
 
-    branch_index          = max(0, min(branch_index, len(turn["branches"]) - 1))
-    turn["active_branch"] = branch_index
+    branch_index = max(0, min(branch_index, turn["branch_count"] - 1))
+    branch_result = db_set_active_branch(session_id, turn_id, branch_index)
 
-    for i, s in enumerate(sessions["sessions"]):
-        if s["id"] == session_id:
-            sessions["sessions"][i] = sess
-            break
-    save_sessions(sessions)
-
-    branch = turn["branches"][branch_index]
     return jsonify({
-        "branch_index": branch_index,
-        "branch_count": len(turn["branches"]),
-        "user_content": branch["user"]["content"],
-        "bot":          branch["bot"],
+        "branch_index": branch_result["branch_index"],
+        "branch_count": branch_result["branch_count"],
+        "user_content": branch_result["branch"]["user"]["content"],
+        "bot":          branch_result["branch"]["bot"],
     })
-
 # ─── Routes: sessions ────────────────────────────────────────────
 
 @app.route("/api/sessions", methods=["GET"])
 def list_sessions():
-    sessions = load_sessions()
-    result = [
-        {
-            "id":         s["id"],
-            "title":      s.get("title", "New Chat"),
-            "created_at": s.get("created_at"),
-            "updated_at": s.get("updated_at"),
-        }
-        for s in sessions["sessions"]
-    ]
-    result.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
-    return jsonify(result)
+    return jsonify(db_list_sessions())
 
 
 @app.route("/api/sessions", methods=["POST"])
 def create_session():
     now = datetime.now().isoformat(timespec="seconds")
-    new_session = {
-        "id":         str(uuid.uuid4()),
-        "title":      "New Chat",
-        "created_at": now,
-        "updated_at": now,
-        "turns":      [],
-    }
-    sessions = load_sessions()
-    sessions["sessions"].append(new_session)
-    save_sessions(sessions)
-    return jsonify({"id": new_session["id"], "title": new_session["title"]})
+    sid = str(uuid.uuid4())
+    db_create_session(sid, "New Chat", now)
+    return jsonify({"id": sid, "title": "New Chat"})
 
 
 @app.route("/api/sessions/<session_id>", methods=["GET"])
 def get_session(session_id):
-    sessions = load_sessions()
-    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
+    sess = db_get_session(session_id)
     if not sess:
         return jsonify({"error": "not found"}), 404
-
-    if "messages" in sess and "turns" not in sess:
-        sess = migrate_session(sess)
-
-    active_path = get_active_path(sess)
-    return jsonify({
-        "id":         sess["id"],
-        "title":      sess.get("title", "New Chat"),
-        "updated_at": sess.get("updated_at"),
-        "turns":      active_path,
-    })
+    return jsonify(sess)
 
 
 @app.route("/api/sessions/<session_id>", methods=["DELETE"])
 def delete_session(session_id):
-    sessions = load_sessions()
-    sessions["sessions"] = [s for s in sessions["sessions"] if s["id"] != session_id]
-    save_sessions(sessions)
+    db_delete_session(session_id)
     return jsonify({"ok": True})
 
 
@@ -385,15 +287,12 @@ def rename_session(session_id):
     title = data.get("title", "").strip()
     if not title:
         return jsonify({"error": "empty title"}), 400
-    sessions = load_sessions()
-    sess = next((s for s in sessions["sessions"] if s["id"] == session_id), None)
-    if not sess:
+    ok = db_rename_session(session_id, title)
+    if not ok:
         return jsonify({"error": "not found"}), 404
-    sess["title"] = title
-    save_sessions(sessions)
     return jsonify({"ok": True, "title": title})
 
-# ─── Routes: skills ──────────────────────────────────────────────
+# ─── Routes: skills ────────────────────────────────────────────── ──────────────────────────────────────────────
 
 @app.route("/api/skills", methods=["GET"])
 def skills_list():

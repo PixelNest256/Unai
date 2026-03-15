@@ -11,9 +11,11 @@ token calculation, etc.
 import json
 import importlib.util
 import os
+import sqlite3
 import time
 import uuid
 import tiktoken
+from contextlib import contextmanager
 from datetime import datetime
 
 # ─── Path constants ────────────────────────────────────────────────────
@@ -21,7 +23,7 @@ from datetime import datetime
 UNAI_DIR      = os.path.dirname(os.path.abspath(__file__))
 SKILLS_DIR    = os.path.join(UNAI_DIR, "skills")
 PRIORITY_FILE = os.path.join(UNAI_DIR, "priority.json")
-SESSIONS_FILE = os.path.join(UNAI_DIR, "sessions.json")
+DB_FILE = os.path.join(UNAI_DIR, "sessions.db")
 
 # Fallback message when no Skill matches
 NO_SKILL_MESSAGE = "Sorry, there is no corresponding Skill for that question."
@@ -301,29 +303,74 @@ def process_streamed(user_input: str):
 
     yield {"phase": "no_match"}
 
-# ─── sessions.json ────────────────────────────────────────────────
+# ─── SQLite: DB init ──────────────────────────────────────────────
 
-def load_sessions() -> dict:
-    if not os.path.exists(SESSIONS_FILE):
-        return {"sessions": []}
-    with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+def _db_conn() -> sqlite3.Connection:
+    """Open (and auto-create) the sessions DB with WAL mode."""
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
 
-def save_sessions(data: dict):
-    with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+@contextmanager
+def db():
+    """Context manager: yields a connection, commits on success, rolls back on error."""
+    conn = _db_conn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
-# ─── Session structure helpers ───────────────────────────────────────
+def init_db():
+    """Create tables if they do not yet exist. Called once at startup."""
+    with db() as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS sessions (
+                id         TEXT PRIMARY KEY,
+                title      TEXT NOT NULL DEFAULT 'New Chat',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS turns (
+                id             TEXT PRIMARY KEY,
+                session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                position       INTEGER NOT NULL,
+                active_branch  INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS branches (
+                id            TEXT PRIMARY KEY,
+                turn_id       TEXT NOT NULL REFERENCES turns(id) ON DELETE CASCADE,
+                position      INTEGER NOT NULL,
+                created_at    TEXT NOT NULL,
+                user_content  TEXT NOT NULL,
+                user_ts       TEXT NOT NULL,
+                bot_content   TEXT NOT NULL,
+                bot_skill     TEXT,
+                bot_tokens    INTEGER,
+                bot_elapsed   REAL,
+                bot_tps       REAL,
+                bot_ts        TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_turns_session  ON turns(session_id, position);
+            CREATE INDEX IF NOT EXISTS idx_branches_turn  ON branches(turn_id, position);
+        """)
+
+# ─── Session structure helper ─────────────────────────────────────
 
 def make_branch(user_content: str, bot_result: dict, now: str) -> dict:
-    """Generate and return one branch object."""
+    """In-memory branch dict (used by app.py before/after DB writes)."""
     return {
         "id":         str(uuid.uuid4()),
         "created_at": now,
-        "user": {
-            "content": user_content,
-            "ts":      now,
-        },
+        "user": {"content": user_content, "ts": now},
         "bot": {
             "content":    bot_result["response"],
             "skill":      bot_result.get("skill"),
@@ -334,46 +381,240 @@ def make_branch(user_content: str, bot_result: dict, now: str) -> dict:
         },
     }
 
-def get_active_path(sess: dict) -> list:
-    """Return path of active branch in session."""
-    path = []
-    for turn in sess.get("turns", []):
-        bi       = turn.get("active_branch", 0)
-        branches = turn.get("branches", [])
-        if branches:
-            bi = max(0, min(bi, len(branches) - 1))
-            path.append({
-                "turn_id":      turn["id"],
-                "branch":       branches[bi],
-                "branch_index": bi,
-                "branch_count": len(branches),
-            })
-    return path
+def _branch_row_to_dict(row: sqlite3.Row) -> dict:
+    return {
+        "id":         row["id"],
+        "created_at": row["created_at"],
+        "user": {"content": row["user_content"], "ts": row["user_ts"]},
+        "bot": {
+            "content":    row["bot_content"],
+            "skill":      row["bot_skill"],
+            "tokens":     row["bot_tokens"],
+            "elapsed_ms": row["bot_elapsed"],
+            "tps":        row["bot_tps"],
+            "ts":         row["bot_ts"],
+        },
+    }
 
-def migrate_session(sess: dict) -> dict:
-    """Convert old format (flat messages list) to turns/branches structure."""
-    messages = sess.get("messages", [])
-    turns = []
-    i = 0
-    while i < len(messages):
-        u = messages[i]     if i     < len(messages) else None
-        b = messages[i + 1] if i + 1 < len(messages) else None
-        if u and u.get("role") == "user":
-            now = u.get("ts", datetime.now().isoformat(timespec="seconds"))
-            bot_result = {
-                "response":   b["content"]        if b else "",
-                "skill":      b.get("skill")       if b else None,
-                "tokens":     b.get("tokens")      if b else 0,
-                "elapsed_ms": b.get("elapsed_ms")  if b else 0,
-                "tps":        b.get("tps")         if b else 0,
-            }
-            branch = make_branch(u["content"], bot_result, now)
-            turns.append({
-                "id":            str(uuid.uuid4()),
-                "active_branch": 0,
-                "branches":      [branch],
+# ─── DB-backed session CRUD ───────────────────────────────────────
+
+def db_list_sessions() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, title, created_at, updated_at FROM sessions ORDER BY updated_at DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+def db_create_session(session_id: str, title: str, now: str):
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO sessions(id, title, created_at, updated_at) VALUES (?,?,?,?)",
+            (session_id, title, now, now),
+        )
+
+def db_get_session(session_id: str) -> dict | None:
+    """Return session + active-path turns, or None."""
+    with db() as conn:
+        sess_row = conn.execute(
+            "SELECT id, title, created_at, updated_at FROM sessions WHERE id=?",
+            (session_id,),
+        ).fetchone()
+        if not sess_row:
+            return None
+
+        turn_rows = conn.execute(
+            "SELECT id, position, active_branch FROM turns WHERE session_id=? ORDER BY position",
+            (session_id,),
+        ).fetchall()
+
+        active_path = []
+        for tr in turn_rows:
+            branch_rows = conn.execute(
+                "SELECT * FROM branches WHERE turn_id=? ORDER BY position",
+                (tr["id"],),
+            ).fetchall()
+            if not branch_rows:
+                continue
+            bi = max(0, min(tr["active_branch"], len(branch_rows) - 1))
+            active_path.append({
+                "turn_id":      tr["id"],
+                "branch":       _branch_row_to_dict(branch_rows[bi]),
+                "branch_index": bi,
+                "branch_count": len(branch_rows),
             })
-        i += 2
-    sess["turns"] = turns
-    del sess["messages"]
-    return sess
+
+    return {
+        "id":         sess_row["id"],
+        "title":      sess_row["title"],
+        "created_at": sess_row["created_at"],
+        "updated_at": sess_row["updated_at"],
+        "turns":      active_path,
+    }
+
+def db_delete_session(session_id: str):
+    with db() as conn:
+        conn.execute("DELETE FROM sessions WHERE id=?", (session_id,))
+
+def db_rename_session(session_id: str, title: str) -> bool:
+    with db() as conn:
+        cur = conn.execute(
+            "UPDATE sessions SET title=? WHERE id=?", (title, session_id)
+        )
+    return cur.rowcount > 0
+
+def db_append_turn(session_id: str, user_input: str,
+                   bot_result: dict, now: str) -> dict:
+    """Append a new turn (one branch) to a session. Returns active-path turn dict."""
+    with db() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(MAX(position), -1) AS mx FROM turns WHERE session_id=?",
+            (session_id,),
+        ).fetchone()
+        pos       = row["mx"] + 1
+        turn_id   = str(uuid.uuid4())
+        branch_id = str(uuid.uuid4())
+        bot       = bot_result
+
+        conn.execute(
+            "INSERT INTO turns(id, session_id, position, active_branch) VALUES (?,?,?,0)",
+            (turn_id, session_id, pos),
+        )
+        conn.execute(
+            """INSERT INTO branches
+               (id, turn_id, position, created_at,
+                user_content, user_ts,
+                bot_content, bot_skill, bot_tokens, bot_elapsed, bot_tps, bot_ts)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (branch_id, turn_id, 0, now,
+             user_input, now,
+             bot.get("response", ""), bot.get("skill"),
+             bot.get("tokens"), bot.get("elapsed_ms"), bot.get("tps"), now),
+        )
+        conn.execute(
+            "UPDATE sessions SET updated_at=? WHERE id=?", (now, session_id)
+        )
+
+    return {
+        "turn_id":      turn_id,
+        "branch":       {
+            "id": branch_id, "created_at": now,
+            "user": {"content": user_input, "ts": now},
+            "bot": {
+                "content":    bot.get("response", ""),
+                "skill":      bot.get("skill"),
+                "tokens":     bot.get("tokens"),
+                "elapsed_ms": bot.get("elapsed_ms"),
+                "tps":        bot.get("tps"),
+                "ts":         now,
+            },
+        },
+        "branch_index": 0,
+        "branch_count": 1,
+    }
+
+def db_add_branch(session_id: str, turn_id: str, user_input: str,
+                  bot_result: dict, now: str) -> dict:
+    """Append a new branch to an existing turn (regenerate / edit). Returns updated info."""
+    with db() as conn:
+        agg = conn.execute(
+            "SELECT COALESCE(MAX(position), -1) AS mx, COUNT(*) AS cnt FROM branches WHERE turn_id=?",
+            (turn_id,),
+        ).fetchone()
+        new_pos   = agg["mx"] + 1
+        new_count = agg["cnt"] + 1
+        branch_id = str(uuid.uuid4())
+        bot       = bot_result
+
+        conn.execute(
+            """INSERT INTO branches
+               (id, turn_id, position, created_at,
+                user_content, user_ts,
+                bot_content, bot_skill, bot_tokens, bot_elapsed, bot_tps, bot_ts)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (branch_id, turn_id, new_pos, now,
+             user_input, now,
+             bot.get("response", ""), bot.get("skill"),
+             bot.get("tokens"), bot.get("elapsed_ms"), bot.get("tps"), now),
+        )
+        conn.execute(
+            "UPDATE turns SET active_branch=? WHERE id=?", (new_pos, turn_id)
+        )
+        conn.execute(
+            "UPDATE sessions SET updated_at=? WHERE id=?", (now, session_id)
+        )
+
+    return {
+        "branch_index": new_pos,
+        "branch_count": new_count,
+        "branch_id":    branch_id,
+        "branch": {
+            "id": branch_id, "created_at": now,
+            "user": {"content": user_input, "ts": now},
+            "bot": {
+                "content":    bot.get("response", ""),
+                "skill":      bot.get("skill"),
+                "tokens":     bot.get("tokens"),
+                "elapsed_ms": bot.get("elapsed_ms"),
+                "tps":        bot.get("tps"),
+                "ts":         now,
+            },
+        },
+    }
+
+def db_set_active_branch(session_id: str, turn_id: str, branch_index: int) -> dict | None:
+    """Switch active branch of a turn. Returns branch dict or None if invalid."""
+    with db() as conn:
+        branches = conn.execute(
+            "SELECT * FROM branches WHERE turn_id=? ORDER BY position",
+            (turn_id,),
+        ).fetchall()
+        if not branches:
+            return None
+        bi = max(0, min(branch_index, len(branches) - 1))
+        conn.execute("UPDATE turns SET active_branch=? WHERE id=?", (bi, turn_id))
+
+    return {
+        "branch_index": bi,
+        "branch_count": len(branches),
+        "branch":       _branch_row_to_dict(branches[bi]),
+    }
+
+def db_truncate_turns_after(session_id: str, turn_id: str):
+    """Delete all turns that come positionally after the given turn."""
+    with db() as conn:
+        pos_row = conn.execute(
+            "SELECT position FROM turns WHERE id=? AND session_id=?",
+            (turn_id, session_id),
+        ).fetchone()
+        if pos_row:
+            conn.execute(
+                "DELETE FROM turns WHERE session_id=? AND position > ?",
+                (session_id, pos_row["position"]),
+            )
+
+def db_get_turn_active_branch(session_id: str, turn_id: str) -> dict | None:
+    """Return the active branch dict of a specific turn."""
+    with db() as conn:
+        tr = conn.execute(
+            "SELECT active_branch FROM turns WHERE id=? AND session_id=?",
+            (turn_id, session_id),
+        ).fetchone()
+        if not tr:
+            return None
+        branches = conn.execute(
+            "SELECT * FROM branches WHERE turn_id=? ORDER BY position",
+            (turn_id,),
+        ).fetchall()
+        if not branches:
+            return None
+        bi = max(0, min(tr["active_branch"], len(branches) - 1))
+        return _branch_row_to_dict(branches[bi])
+
+def db_auto_title(session_id: str, text: str, now: str):
+    """Set title from first user message if still 'New Chat'."""
+    title = text[:30] + ("..." if len(text) > 30 else "")
+    with db() as conn:
+        conn.execute(
+            "UPDATE sessions SET title=?, updated_at=? WHERE id=? AND title='New Chat'",
+            (title, now, session_id),
+        )
