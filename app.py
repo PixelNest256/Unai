@@ -430,11 +430,24 @@ def import_skill():
         import subprocess, sys
         req_path = os.path.join(SKILLS_DIR, skill_id, "requirements.txt")
         try:
-            proc = subprocess.run(
-                [sys.executable, "-m", "pip", "install", "-r", req_path,
-                 "--break-system-packages"],
-                capture_output=True, text=True, timeout=120
-            )
+            # Platform-compatible pip install command
+            cmd = [sys.executable, "-m", "pip", "install", "-r", req_path]
+            
+            # Add platform-specific flags
+            import platform
+            if platform.system() == "Windows":
+                # On Windows, try without --break-system-packages first
+                try:
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                except subprocess.CalledProcessError:
+                    # Fallback to --break-system-packages if needed
+                    cmd.append("--break-system-packages")
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            else:
+                # On Unix-like systems, use --break-system-packages for better compatibility
+                cmd.append("--break-system-packages")
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            
             if proc.returncode == 0:
                 pip_result = {"ok": True, "output": proc.stdout.strip()}
             else:

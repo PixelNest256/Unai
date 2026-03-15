@@ -34,7 +34,7 @@ def respond(text):
 
     try:
         response = unai.get(url, headers={"User-Agent": "Unai/1.0"}, timeout=5)
-        if response is None:
+        if response is None or response.status_code != 200:
             return None
 
         data = response.json()

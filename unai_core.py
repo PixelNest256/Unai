@@ -72,7 +72,7 @@ def warm_skill_cache() -> list[str]:
             loaded.append(name)
     return loaded
 
-def invalidate_skill_cache(skill_name: str | None = None):
+def invalidate_skill_cache(skill_name):
     """
     Invalidate cache.
     If skill_name is specified, only that Skill; if None, delete all.
@@ -125,7 +125,7 @@ def count_tokens(text: str) -> int:
 
 # ─── Result dictionary generation ───────────────────────────────────────────────
 
-def make_result(response: str, skill: str | None, elapsed: float) -> dict:
+def make_result(response: str, skill, elapsed: float) -> dict:
     """
     Generate unified format dictionary returned by process functions.
 
@@ -149,7 +149,7 @@ def make_result(response: str, skill: str | None, elapsed: float) -> dict:
 
 # ─── Slash commands ───────────────────────────────────────────
 
-def process_slash_command(user_input: str) -> dict | None:
+def process_slash_command(user_input: str):
     """
     Process slash commands like /help.
     Return dictionary in same format as make_result() if matched.
@@ -412,7 +412,7 @@ def db_create_session(session_id: str, title: str, now: str):
             (session_id, title, now, now),
         )
 
-def db_get_session(session_id: str) -> dict | None:
+def db_get_session(session_id: str):
     """Return session + active-path turns, or None."""
     with db() as conn:
         sess_row = conn.execute(
@@ -561,7 +561,7 @@ def db_add_branch(session_id: str, turn_id: str, user_input: str,
         },
     }
 
-def db_set_active_branch(session_id: str, turn_id: str, branch_index: int) -> dict | None:
+def db_set_active_branch(session_id: str, turn_id: str, branch_index: int):
     """Switch active branch of a turn. Returns branch dict or None if invalid."""
     with db() as conn:
         branches = conn.execute(
@@ -592,7 +592,7 @@ def db_truncate_turns_after(session_id: str, turn_id: str):
                 (session_id, pos_row["position"]),
             )
 
-def db_get_turn_active_branch(session_id: str, turn_id: str) -> dict | None:
+def db_get_turn_active_branch(session_id: str, turn_id: str):
     """Return the active branch dict of a specific turn."""
     with db() as conn:
         tr = conn.execute(

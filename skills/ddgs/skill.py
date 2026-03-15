@@ -1,6 +1,11 @@
 """DDGS (DuckDuckGo Search) summary skill"""
 import re
-from ddgs import DDGS
+
+try:
+    from ddgs import DDGS
+    DDGS_AVAILABLE = True
+except ImportError:
+    DDGS_AVAILABLE = False
 
 _TRIGGERS = re.compile(
     r'(search|find|look up|ddgs|what is|what\'s|who is|who\'s|tell me about)',
@@ -30,6 +35,9 @@ def _clean(text):
     return text.strip()
 
 def respond(text):
+    if not DDGS_AVAILABLE:
+        return "DuckDuckGo search is not available. Please install the 'duckduckgo-search' package."
+    
     keyword = _clean(text)
     if not keyword:
         return None
