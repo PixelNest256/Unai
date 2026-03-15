@@ -1,8 +1,8 @@
 {
   "order": [
+    "greeting",
     "wikipedia",
     "ddgs",
-    "greeting",
     "calc",
     "joke"
   ],
