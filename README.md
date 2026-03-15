@@ -31,7 +31,7 @@ When Unai can't answer something, it says so clearly. That honesty is a feature,
 **Requirements:** Python 3.10+, pip
 
 ```bash
-git clone https://github.com/your-username/unai.git
+git clone https://github.com/PixelNest256/Unai.git
 cd unai
 pip install -r requirements.txt
 python app.py
