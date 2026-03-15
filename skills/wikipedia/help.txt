@@ -5,8 +5,8 @@ This skill searches Wikipedia and provides article summaries.
 Examples:
 - "What is Python?"
 - "Tell me about Albert Einstein"
-- "アインシュタインについて"
-- "Pythonとは何ですか"
+- "Search for Einstein"
+- "Python programming"
 
 The skill:
 - Searches Wikipedia for relevant articles

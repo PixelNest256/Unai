@@ -39,7 +39,7 @@ def respond(text):
             results = list(ddgs.text(keyword, max_results=3))
             
         if not results:
-            return "検索結果が見つかりませんでした。"
+            return "No search results found."
         
         # Extract and summarize the first result
         first_result = results[0]
@@ -47,7 +47,7 @@ def respond(text):
         body = first_result.get('body', '')
         
         if not body:
-            return "要約を取得できませんでした。"
+            return "Could not retrieve summary."
         
         # Limit summary to first 2-3 sentences
         sentences = re.split(r'[.!?]', body)
@@ -58,4 +58,4 @@ def respond(text):
         return f"【{title}】\n{summary}"
         
     except Exception:
-        return "検索中にエラーが発生しました。"
+        return "An error occurred during search."

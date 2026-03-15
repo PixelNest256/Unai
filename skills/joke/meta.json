@@ -1,1 +1,6 @@
-﻿{"name": "joke", "description": "ランダムなジョークを返す", "author": "unai-core", "version": "1.0.0"}
+﻿{
+    "name": "joke",
+    "description": "Return random jokes",
+    "author": "unai-core",
+    "version": "1.0.0"
+}

@@ -5,7 +5,7 @@ import operator
 
 _TRIGGERS = re.compile(
     r'(\d[\d\s\+\-\*\/\^\(\)\.]*[\d\)])'
-    r'|計算|solve|expand|factor',
+    r'|calculate|solve|expand|factor',
     re.IGNORECASE
 )
 

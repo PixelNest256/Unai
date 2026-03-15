@@ -1,29 +1,29 @@
 ﻿/* ── DOM refs ─────────────────────────────────── */
-const chatEl        = document.getElementById('chat');
-const emptyEl       = document.getElementById('empty-state');
-const inputAreaEl   = document.getElementById('input-area');
-const toastEl       = document.getElementById('toast');
-const headerTitle   = document.getElementById('header-title');
+const chatEl = document.getElementById('chat');
+const emptyEl = document.getElementById('empty-state');
+const inputAreaEl = document.getElementById('input-area');
+const toastEl = document.getElementById('toast');
+const headerTitle = document.getElementById('header-title');
 const headerTitleInput = document.getElementById('header-title-input');
 const sessionListEl = document.getElementById('session-list');
-const newChatBtn    = document.getElementById('new-chat-btn');
+const newChatBtn = document.getElementById('new-chat-btn');
 const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
-const sidebar       = document.getElementById('sidebar');
+const sidebar = document.getElementById('sidebar');
 
-const settingsOverlay  = document.getElementById('settings-overlay');
-const openSettingsBtn  = document.getElementById('open-settings-btn');
+const settingsOverlay = document.getElementById('settings-overlay');
+const openSettingsBtn = document.getElementById('open-settings-btn');
 const closeSettingsBtn = document.getElementById('close-settings-btn');
-const toggleStreaming   = document.getElementById('toggle-streaming');
+const toggleStreaming = document.getElementById('toggle-streaming');
 
 const confirmOverlay = document.getElementById('confirm-overlay');
-const cancelConfirm  = document.getElementById('cancel-confirm');
-const doConfirm      = document.getElementById('do-confirm');
+const cancelConfirm = document.getElementById('cancel-confirm');
+const doConfirm = document.getElementById('do-confirm');
 
 // Two input surfaces: landing (empty-state) and chat-mode bottom bar
 const inputElLanding = document.getElementById('message-input');
 const sendBtnLanding = document.getElementById('send-btn');
-const inputElChat    = document.getElementById('message-input-chat');
-const sendBtnChat    = document.getElementById('send-btn-chat');
+const inputElChat = document.getElementById('message-input-chat');
+const sendBtnChat = document.getElementById('send-btn-chat');
 
 // Unified accessors — always point at whichever is active
 function inputEl() { return emptyEl.classList.contains('hidden') ? inputElChat : inputElLanding; }
@@ -50,8 +50,8 @@ function enterLandingMode() {
 
 /* ── State ────────────────────────────────────── */
 let currentSessionId = null;
-let isWaiting        = false;
-let confirmCallback  = null;
+let isWaiting = false;
+let confirmCallback = null;
 
 /* ── Prefs (localStorage) ─────────────────────── */
 const PREFS_KEY = 'unai_prefs';
@@ -84,7 +84,7 @@ function showToast(msg) {
 /* ── Confirm dialog ───────────────────────────── */
 function showConfirm(title, body, cb) {
   document.getElementById('confirm-title').textContent = title;
-  document.getElementById('confirm-body').textContent  = body;
+  document.getElementById('confirm-body').textContent = body;
   confirmCallback = cb;
   confirmOverlay.classList.add('open');
 }
@@ -137,7 +137,7 @@ async function commitRenameHeader() {
 
 headerTitle.addEventListener('dblclick', startRenameHeader);
 headerTitleInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter')  { e.preventDefault(); commitRenameHeader(); }
+  if (e.key === 'Enter') { e.preventDefault(); commitRenameHeader(); }
   if (e.key === 'Escape') { headerTitleInput.classList.remove('active'); headerTitle.classList.remove('hidden'); }
 });
 headerTitleInput.addEventListener('blur', commitRenameHeader);
@@ -145,7 +145,7 @@ headerTitleInput.addEventListener('blur', commitRenameHeader);
 /* ── Session list ─────────────────────────────── */
 async function loadSessionList() {
   try {
-    const res  = await fetch('/api/sessions');
+    const res = await fetch('/api/sessions');
     const list = await res.json();
     renderSessionList(list);
   } catch { /* silent */ }
@@ -157,24 +157,24 @@ function renderSessionList(list) {
     sessionListEl.innerHTML = '<div style="padding:16px 12px;font-size:11px;color:var(--muted)">No history</div>';
     return;
   }
-  const today     = new Date().toDateString();
+  const today = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
-  const groups    = {};
+  const groups = {};
   list.forEach(s => {
-    const d     = s.updated_at ? new Date(s.updated_at).toDateString() : '';
+    const d = s.updated_at ? new Date(s.updated_at).toDateString() : '';
     const label = d === today ? 'Today' : d === yesterday ? 'Yesterday' : (d || 'Earlier');
     (groups[label] = groups[label] || []).push(s);
   });
   Object.entries(groups).forEach(([label, items]) => {
     const gl = document.createElement('div');
-    gl.className   = 'session-group-label';
+    gl.className = 'session-group-label';
     gl.textContent = label;
     sessionListEl.appendChild(gl);
     items.forEach(s => {
       const el = document.createElement('div');
-      el.className  = 'session-item' + (s.id === currentSessionId ? ' active' : '');
+      el.className = 'session-item' + (s.id === currentSessionId ? ' active' : '');
       el.dataset.id = s.id;
-      el.innerHTML  = `
+      el.innerHTML = `
         <span class="session-title">${escHtml(s.title)}</span>
         <div class="session-actions">
           <button class="session-rename" title="Rename" data-id="${s.id}">
@@ -206,9 +206,9 @@ function renderSessionList(list) {
 /* インライン rename（セッションリスト内） */
 function startRenameInline(sessionId, itemEl, currentTitle) {
   const titleEl = itemEl.querySelector('.session-title');
-  const inp     = document.createElement('input');
+  const inp = document.createElement('input');
   inp.className = 'session-rename-input';
-  inp.value     = currentTitle;
+  inp.value = currentTitle;
   inp.maxLength = 80;
   titleEl.replaceWith(inp);
   inp.focus();
@@ -219,7 +219,7 @@ function startRenameInline(sessionId, itemEl, currentTitle) {
     inp.replaceWith(titleEl);
     if (!newTitle || newTitle === currentTitle) return;
     try {
-      const res  = await fetch(`/api/sessions/${sessionId}/rename`, {
+      const res = await fetch(`/api/sessions/${sessionId}/rename`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle }),
@@ -234,7 +234,7 @@ function startRenameInline(sessionId, itemEl, currentTitle) {
   }
 
   inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
     if (e.key === 'Escape') { inp.replaceWith(titleEl); }
   });
   inp.addEventListener('blur', commit);
@@ -254,12 +254,12 @@ async function deleteSession(id) {
 /* ── Load session ─────────────────────────────── */
 async function loadSession(id) {
   try {
-    const res  = await fetch(`/api/sessions/${id}`);
+    const res = await fetch(`/api/sessions/${id}`);
     const sess = await res.json();
 
     while (chatEl.firstChild) chatEl.removeChild(chatEl.firstChild);
-    currentSessionId         = id;
-    headerTitle.textContent  = sess.title || 'New Chat';
+    currentSessionId = id;
+    headerTitle.textContent = sess.title || 'New Chat';
 
     if (sess.turns && sess.turns.length > 0) {
       enterChatMode();
@@ -278,7 +278,7 @@ async function loadSession(id) {
 /* ── New chat ─────────────────────────────────── */
 newChatBtn.addEventListener('click', () => {
   if (!currentSessionId) return;
-  currentSessionId        = null;
+  currentSessionId = null;
   clearChat();
   headerTitle.textContent = 'New Chat';  // ← タイトルをリセット
   document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
@@ -300,18 +300,18 @@ function renderTurn(turnData, stream = false) {
   const { turn_id, branch, branch_index, branch_count } = turnData;
 
   // ── user message ──
-  const userMsg   = document.createElement('div');
-  userMsg.className     = 'msg user';
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg user';
   userMsg.dataset.turnId = turn_id;
   const userBubble = document.createElement('div');
-  userBubble.className  = 'bubble';
+  userBubble.className = 'bubble';
   userBubble.textContent = branch.user.content;
   userMsg.appendChild(userBubble);
   chatEl.appendChild(userMsg);
 
   // ── bot message ──
-  const botMsg   = document.createElement('div');
-  botMsg.className      = 'msg bot';
+  const botMsg = document.createElement('div');
+  botMsg.className = 'msg bot';
   botMsg.dataset.turnId = turn_id;
   const botBubble = document.createElement('div');
   botBubble.className = 'bubble';
@@ -336,12 +336,12 @@ function renderTurn(turnData, stream = false) {
 /* ── Build action bar ──────────────────────────── */
 function buildActionBar(turn_id, branchIndex, branchCount, userBubble, botBubble, metaEl, botMsg) {
   const actionBar = document.createElement('div');
-  actionBar.className   = 'turn-actions';
+  actionBar.className = 'turn-actions';
   actionBar.dataset.turnId = turn_id;
 
   const nav = document.createElement('div');
-  nav.className         = 'branch-nav';
-  nav.dataset.turnId    = turn_id;
+  nav.className = 'branch-nav';
+  nav.dataset.turnId = turn_id;
   updateBranchNav(nav, branchIndex, branchCount, turn_id, userBubble, botBubble, metaEl);
   actionBar.appendChild(nav);
 
@@ -399,17 +399,17 @@ function updateBranchNav(nav, branchIndex, branchCount, turn_id, userBubble, bot
   const prev = document.createElement('button');
   prev.className = 'branch-nav-btn';
   prev.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M5 1L2 4l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  prev.disabled  = branchIndex === 0;
+  prev.disabled = branchIndex === 0;
   prev.addEventListener('click', () => switchBranch(turn_id, branchIndex - 1, nav, userBubble, botBubble, metaEl));
 
   const label = document.createElement('span');
-  label.className   = 'branch-label';
+  label.className = 'branch-label';
   label.textContent = `${branchIndex + 1}/${branchCount}`;
 
   const next = document.createElement('button');
   next.className = 'branch-nav-btn';
   next.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M3 1l3 3-3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  next.disabled  = branchIndex === branchCount - 1;
+  next.disabled = branchIndex === branchCount - 1;
   next.addEventListener('click', () => switchBranch(turn_id, branchIndex + 1, nav, userBubble, botBubble, metaEl));
 
   nav.appendChild(prev);
@@ -421,14 +421,14 @@ function updateBranchNav(nav, branchIndex, branchCount, turn_id, userBubble, bot
 async function switchBranch(turn_id, newIndex, nav, userBubble, botBubble, metaEl) {
   if (!currentSessionId || isWaiting) return;
   try {
-    const res  = await fetch('/api/chat/switch_branch', {
+    const res = await fetch('/api/chat/switch_branch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: currentSessionId, turn_id, branch_index: newIndex }),
     });
     const data = await res.json();
     userBubble.textContent = data.user_content;
-    botBubble.textContent  = data.bot.content;
+    botBubble.textContent = data.bot.content;
     updateMetaEl(metaEl, data.bot);
     updateBranchNav(nav, data.branch_index, data.branch_count, turn_id, userBubble, botBubble, metaEl);
   } catch { showToast('Failed to switch branch'); }
@@ -447,7 +447,7 @@ async function regenerateTurn(turn_id, bar, userBubble, botBubble, metaEl) {
 
   const regenStart = performance.now();
   try {
-    const res  = await fetch('/api/chat/regenerate', {
+    const res = await fetch('/api/chat/regenerate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: currentSessionId, turn_id }),
@@ -472,7 +472,7 @@ function startEdit(turn_id, userBubble, botBubble, metaEl, actionBar) {
   const original = userBubble.textContent;
   const textarea = document.createElement('textarea');
   textarea.className = 'user-edit-area';
-  textarea.value     = original;
+  textarea.value = original;
   userBubble.replaceWith(textarea);
   textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
   textarea.focus();
@@ -481,14 +481,14 @@ function startEdit(turn_id, userBubble, botBubble, metaEl, actionBar) {
     textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
   });
 
-  const row       = document.createElement('div');
-  row.className   = 'edit-confirm-row';
+  const row = document.createElement('div');
+  row.className = 'edit-confirm-row';
   const cancelBtn = document.createElement('button');
-  cancelBtn.className   = 'btn-edit-cancel';
+  cancelBtn.className = 'btn-edit-cancel';
   cancelBtn.textContent = 'Cancel';
   cancelBtn.addEventListener('click', () => { textarea.replaceWith(userBubble); row.remove(); });
   const sendEditBtn = document.createElement('button');
-  sendEditBtn.className   = 'btn-edit-send';
+  sendEditBtn.className = 'btn-edit-send';
   sendEditBtn.textContent = 'Send';
   sendEditBtn.addEventListener('click', () => submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, actionBar, row));
 
@@ -519,7 +519,7 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
 
   const editStart = performance.now();
   try {
-    const res  = await fetch('/api/chat/edit', {
+    const res = await fetch('/api/chat/edit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: currentSessionId, turn_id, message: newText }),
@@ -548,7 +548,7 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
 /* Remove all DOM turn elements after a given turn_id */
 function removeTurnsAfter(turn_id) {
   const remaining = Array.from(chatEl.children);
-  let removing    = false;
+  let removing = false;
   for (const el of remaining) {
     if (removing) { chatEl.removeChild(el); }
     else if (el.classList.contains('turn-actions') && el.dataset.turnId === turn_id) {
@@ -590,10 +590,10 @@ async function send() {
   let isNewSession = false;
   if (!currentSessionId) {
     try {
-      const res  = await fetch('/api/sessions', { method: 'POST' });
+      const res = await fetch('/api/sessions', { method: 'POST' });
       const data = await res.json();
       currentSessionId = data.id;
-      isNewSession     = true;
+      isNewSession = true;
     } catch { /* ignore */ }
   }
 
@@ -601,15 +601,15 @@ async function send() {
 
   if (!emptyEl.classList.contains('hidden')) enterChatMode();
 
-  inputEl().value         = '';
-  inputEl().style.height  = 'auto';
+  inputEl().value = '';
+  inputEl().style.height = 'auto';
   sendBtn().classList.remove('active');
 
   // Show user bubble immediately
   const userPreviewEl = document.createElement('div');
   userPreviewEl.className = 'msg user';
   const _upb = document.createElement('div');
-  _upb.className   = 'bubble';
+  _upb.className = 'bubble';
   _upb.textContent = text;
   userPreviewEl.appendChild(_upb);
   chatEl.appendChild(userPreviewEl);
@@ -631,9 +631,9 @@ async function send() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     // Read SSE stream
-    const reader  = res.body.getReader();
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let   buf     = '';
+    let buf = '';
 
     outer: while (true) {
       const { done, value } = await reader.read();
@@ -671,8 +671,8 @@ async function send() {
   // ただし no_match のときはサーバー側でターンが保存されているので
   // 通常ルートと同じく sess.turns から取得する
   try {
-    const sr       = await fetch(`/api/sessions/${currentSessionId}`);
-    const sess     = await sr.json();
+    const sr = await fetch(`/api/sessions/${currentSessionId}`);
+    const sess = await sr.json();
     const lastTurn = sess.turns[sess.turns.length - 1];
 
     // lastTurn のユーザー入力が今回の text と一致する場合のみ使う
@@ -702,10 +702,10 @@ async function send() {
 
 /* ── Fallback plain message (no turn controls) ── */
 function appendMsgFallback(role, text, meta = null) {
-  const msgEl  = document.createElement('div');
+  const msgEl = document.createElement('div');
   msgEl.className = `msg ${role}`;
   const bubble = document.createElement('div');
-  bubble.className   = 'bubble';
+  bubble.className = 'bubble';
   bubble.textContent = text;
   msgEl.appendChild(bubble);
   if (meta) msgEl.appendChild(buildMetaEl(meta));
@@ -718,11 +718,11 @@ async function typeText(el, text) {
   el.classList.add('streaming-cursor');
   el.textContent = '';
   const tokenRe = /\S+\s*/g;
-  const tokens  = [];
+  const tokens = [];
   let m;
   while ((m = tokenRe.exec(text)) !== null) tokens.push(m[0]);
   if (tokens.length === 0) { el.textContent = text; el.classList.remove('streaming-cursor'); return; }
-  const targetMs  = Math.min(1500, 600 + tokens.length * 4);
+  const targetMs = Math.min(1500, 600 + tokens.length * 4);
   const baseDelay = Math.max(12, Math.min(60, targetMs / tokens.length));
   for (let i = 0; i < tokens.length; i++) {
     el.textContent += tokens[i];
@@ -739,7 +739,7 @@ function buildMetaEl(bot) {
   metaEl.className = 'meta';
   if (bot && bot.skill) {
     const badge = document.createElement('span');
-    badge.className   = 'skill-badge';
+    badge.className = 'skill-badge';
     badge.textContent = `[${bot.skill}]`;
     metaEl.appendChild(badge);
     const sep = document.createElement('span');
@@ -748,7 +748,7 @@ function buildMetaEl(bot) {
   }
   if (bot && bot.tokens !== undefined) {
     const stat = document.createElement('span');
-    stat.className   = 'stat';
+    stat.className = 'stat';
     stat.textContent = `${bot.tokens} tok · ${bot.wallMs ?? bot.elapsed_ms}ms · ${bot.tps} t/s`;
     metaEl.appendChild(stat);
   }
@@ -759,7 +759,7 @@ function updateMetaEl(metaEl, bot) {
   metaEl.innerHTML = '';
   if (bot.skill) {
     const badge = document.createElement('span');
-    badge.className   = 'skill-badge';
+    badge.className = 'skill-badge';
     badge.textContent = `[${bot.skill}]`;
     metaEl.appendChild(badge);
     const sep = document.createElement('span');
@@ -768,7 +768,7 @@ function updateMetaEl(metaEl, bot) {
   }
   if (bot.tokens !== undefined) {
     const stat = document.createElement('span');
-    stat.className   = 'stat';
+    stat.className = 'stat';
     stat.textContent = `${bot.tokens} tok · ${bot.wallMs ?? bot.elapsed_ms}ms · ${bot.tps} t/s`;
     metaEl.appendChild(stat);
   }

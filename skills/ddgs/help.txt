@@ -1,18 +1,18 @@
-DDGS検索スキルヘルプ
+DDGS Search Skill Help
 
-使用方法:
-- "search [キーワード]" - キーワードを検索して要約を表示
-- "find [キーワード]" - キーワードを検索して要約を表示  
-- "look up [キーワード]" - キーワードを検索して要約を表示
-- "ddgs [キーワード]" - キーワードを検索して要約を表示
+Usage:
+- "search [keyword]" - Search keyword and display summary
+- "find [keyword]" - Search keyword and display summary  
+- "look up [keyword]" - Search keyword and display summary
+- "ddgs [keyword]" - Search keyword and display summary
 
-例:
+Examples:
 - "search python programming"
 - "find latest AI news"
 - "look up weather tokyo"
 - "ddgs machine learning"
 
-機能:
-- DuckDuckGo検索エンジンを使用して情報を検索
-- 検索結果の要約を返信
-- 最初の検索結果のタイトルと本文を表示
+Features:
+- Uses DuckDuckGo search engine to search for information
+- Returns summary of search results
+- Displays title and body of first search result

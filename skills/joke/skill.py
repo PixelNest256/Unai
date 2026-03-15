@@ -3,16 +3,16 @@ import re
 import random
 
 JOKES = [
-    "なぜプログラマーはメガネをかけるのか？\n→ C# が見えないから。",
-    "なぜ科学者はドアノブを信頼しないのか？\n→ いつも何かをひねっているから。",
-    "数学者が銀行に強盗に入った。\n「全員動くな、これは最適化問題だ！」",
-    "なぜスケルトンは友達が少ないのか？\n→ 骨が折れる話ばかりするから。",
-    "プログラマーの妻が言った。「買い物に行って牛乳を1本買ってきて。卵があったら6個ね。」\nプログラマーは牛乳を6本買って帰った。",
-    "なぜ太陽は学校に行かないのか？\n→ すでに100万度の熱を持っているから。",
-    "量子コンピューターに聞いた。「調子はどう？」\n「良くもあり、悪くもある。」",
+    "Why do programmers wear glasses?\n→ Because they can't C#.",
+    "Why don't scientists trust door knobs?\n→ Because they're always twisting things.",
+    "A mathematician walks into a bank to rob it.\n\"Nobody move, this is an optimization problem!\"",
+    "Why do skeletons have so few friends?\n→ Because they're always telling bone-chilling stories.",
+    "A programmer's wife said, \"Go to the store and get a carton of milk. If they have eggs, get six.\"\nThe programmer came back with 6 cartons of milk.",
+    "Why doesn't the sun go to school?\n→ Because it already has a million degrees.",
+    "I asked a quantum computer, \"How are you doing?\"\n\"Good and bad at the same time.\"",
 ]
 
-_TRIGGERS = re.compile(r'joke|ジョーク|笑|おもしろ|面白|ふざけ', re.IGNORECASE)
+_TRIGGERS = re.compile(r'joke|laugh|funny|hilarious|joking', re.IGNORECASE)
 
 def match(text):
     return bool(_TRIGGERS.search(text))

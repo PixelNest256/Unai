@@ -1,10 +1,11 @@
 ﻿#!/usr/bin/env python3
 """
-unai_core.py — Unai の中核ロジック
+unai_core.py — Core logic of Unai
 
-app.py (Web UI) と main.py (CLI) の両方から import して使う。
-Skill のロード・実行、priority.json の読み書き、セッション管理、
-トークン計算など UI に依存しない共通処理をすべてここに集約する。
+Imported and used by both app.py (Web UI) and main.py (CLI).
+All common processing independent of UI is aggregated here:
+Skill loading/execution, priority.json read/write, session management,
+token calculation, etc.
 """
 
 import json
@@ -15,14 +16,14 @@ import uuid
 import tiktoken
 from datetime import datetime
 
-# ─── パス定数 ────────────────────────────────────────────────────
+# ─── Path constants ────────────────────────────────────────────────────
 
 UNAI_DIR      = os.path.dirname(os.path.abspath(__file__))
 SKILLS_DIR    = os.path.join(UNAI_DIR, "skills")
 PRIORITY_FILE = os.path.join(UNAI_DIR, "priority.json")
 SESSIONS_FILE = os.path.join(UNAI_DIR, "sessions.json")
 
-# どの Skill にもマッチしなかったときのフォールバックメッセージ
+# Fallback message when no Skill matches
 NO_SKILL_MESSAGE = "Sorry, there is no corresponding Skill for that question."
 
 # ─── priority.json ───────────────────────────────────────────────
@@ -35,14 +36,14 @@ def save_priority(data: dict):
     with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# ─── Skill ロード ────────────────────────────────────────────────
+# ─── Skill loading ────────────────────────────────────────────────
 
-# モジュールキャッシュ: { skill_name -> module }
-# 同一プロセス内では importlib によるファイル読み込みを一度だけ行う。
+# Module cache: { skill_name -> module }
+# File reading by importlib is performed only once within the same process.
 _skill_cache: dict[str, object] = {}
 
 def load_skill(skill_name: str):
-    """skill.py をインポートしてモジュールを返す。キャッシュ済みならそれを返す。"""
+    """Import skill.py and return the module. Return cached version if already loaded."""
     if skill_name in _skill_cache:
         return _skill_cache[skill_name]
     skill_path = os.path.join(SKILLS_DIR, skill_name, "skill.py")
@@ -56,9 +57,9 @@ def load_skill(skill_name: str):
 
 def warm_skill_cache() -> list[str]:
     """
-    priority.json の有効な Skill を全て先読みしてキャッシュに格納する。
-    起動時に一度だけ呼ぶことで、最初のリクエストの遅延をなくす。
-    ロードできた Skill 名のリストを返す。
+    Preload all valid Skills from priority.json and store them in cache.
+    Called once at startup to eliminate delay for the first request.
+    Returns list of loaded Skill names.
     """
     priority = load_priority()
     loaded = []
@@ -71,9 +72,9 @@ def warm_skill_cache() -> list[str]:
 
 def invalidate_skill_cache(skill_name: str | None = None):
     """
-    キャッシュを無効化する。
-    skill_name を指定した場合はその Skill のみ、None の場合は全件削除。
-    toggle や reorder 後に呼んで再ロードを促す。
+    Invalidate cache.
+    If skill_name is specified, only that Skill; if None, delete all.
+    Called after toggle or reorder to prompt reloading.
     """
     if skill_name is None:
         _skill_cache.clear()
@@ -81,7 +82,7 @@ def invalidate_skill_cache(skill_name: str | None = None):
         _skill_cache.pop(skill_name, None)
 
 def load_meta(skill_name: str) -> dict:
-    """meta.json を読んで辞書を返す。存在しなければデフォルト値。"""
+    """Read meta.json and return dict. Return default values if not exist."""
     meta_path = os.path.join(SKILLS_DIR, skill_name, "meta.json")
     if not os.path.exists(meta_path):
         return {"name": skill_name, "description": "", "author": "unknown", "version": "1.0"}
@@ -89,7 +90,7 @@ def load_meta(skill_name: str) -> dict:
         return json.load(f)
 
 def get_all_skills() -> list[dict]:
-    """skills/ 以下のすべての Skill のメタ情報リストを返す。"""
+    """Return meta information list of all Skills under skills/."""
     skills = []
     for name in os.listdir(SKILLS_DIR):
         if os.path.isdir(os.path.join(SKILLS_DIR, name)):
@@ -100,8 +101,8 @@ def get_all_skills() -> list[dict]:
 
 def load_active_skills() -> list[tuple[str, object]]:
     """
-    priority.json に従い、有効な Skill を優先順に (name, module) のリストで返す。
-    CLI の起動時など、Skill を事前にロードしておきたい場合に使う。
+    Return list of enabled Skills in priority order as (name, module) according to priority.json.
+    Used when Skills need to be preloaded, such as CLI startup.
     """
     priority = load_priority()
     skills = []
@@ -113,18 +114,18 @@ def load_active_skills() -> list[tuple[str, object]]:
             skills.append((name, mod))
     return skills
 
-# ─── トークン計算 ─────────────────────────────────────────────────
+# ─── Token calculation ─────────────────────────────────────────────────
 
 _enc = tiktoken.get_encoding("cl100k_base")
 
 def count_tokens(text: str) -> int:
     return len(_enc.encode(text))
 
-# ─── 結果辞書の生成 ───────────────────────────────────────────────
+# ─── Result dictionary generation ───────────────────────────────────────────────
 
 def make_result(response: str, skill: str | None, elapsed: float) -> dict:
     """
-    process 系関数が返す統一フォーマットの辞書を生成する。
+    Generate unified format dictionary returned by process functions.
 
     {
         "response":   str,
@@ -144,13 +145,13 @@ def make_result(response: str, skill: str | None, elapsed: float) -> dict:
         "tps":        round(tps, 1),
     }
 
-# ─── スラッシュコマンド ───────────────────────────────────────────
+# ─── Slash commands ───────────────────────────────────────────
 
 def process_slash_command(user_input: str) -> dict | None:
     """
-    /help などのスラッシュコマンドを処理する。
-    マッチした場合は make_result() と同形式の辞書を返す。
-    スラッシュコマンドでなければ None を返す。
+    Process slash commands like /help.
+    Return dictionary in same format as make_result() if matched.
+    Return None if not a slash command.
     """
     if not user_input.startswith("/"):
         return None
@@ -162,7 +163,7 @@ def process_slash_command(user_input: str) -> dict | None:
         start = time.perf_counter()
 
         if len(parts) == 1:
-            # /help — 有効な Skill 一覧を表示
+            # /help — Show list of enabled Skills
             priority    = load_priority()
             skills_list = []
             for name in priority["order"]:
@@ -191,7 +192,7 @@ def process_slash_command(user_input: str) -> dict | None:
             skill_name = "help"
 
         else:
-            # /help <skill_name> — Skill 個別ヘルプ
+            # /help <skill_name> — Individual Skill help
             skill_name     = parts[1]
             help_file_path = os.path.join(SKILLS_DIR, skill_name, "help.txt")
 
@@ -214,15 +215,15 @@ def process_slash_command(user_input: str) -> dict | None:
 
     return None
 
-# ─── メイン処理ループ ─────────────────────────────────────────────
+# ─── Main processing loop ─────────────────────────────────────────────
 
 def process(user_input: str) -> dict:
     """
-    ユーザー入力を受け取り、マッチした Skill の応答を返す。
-    スラッシュコマンドを優先チェックし、次に priority 順で Skill を試す。
-    どれもマッチしなかった場合は response=None の辞書を返す。
+    Accept user input and return response from matching Skill.
+    Check slash commands first, then try Skills in priority order.
+    If nothing matches, return dictionary with response=None.
 
-    戻り値は常に make_result() と同形式の辞書:
+    Return value is always dictionary in same format as make_result():
     {
         "response":   str | None,
         "skill":      str | None,
@@ -231,12 +232,12 @@ def process(user_input: str) -> dict:
         "tps":        float,
     }
     """
-    # 1. スラッシュコマンド
+    # 1. Slash commands
     slash = process_slash_command(user_input)
     if slash:
         return slash
 
-    # 2. priority 順で Skill を試す
+    # 2. Try Skills in priority order
     priority = load_priority()
     for name in priority["order"]:
         if name in priority.get("disabled", []):
@@ -256,21 +257,21 @@ def process(user_input: str) -> dict:
         except Exception:
             continue
 
-    # 3. どれもマッチしなかった
+    # 3. Nothing matched
     return {"response": None, "skill": None, "tokens": 0, "elapsed_ms": 0, "tps": 0}
 
-# ─── 進捗付きジェネレーター ──────────────────────────────────────
+# ─── Progress generator ──────────────────────────────────────
 
 def process_streamed(user_input: str):
     """
-    Skill のマッチング・実行過程をジェネレーターで逐次 yield する。
-    各 yield は辞書:
-      {"phase": "matching", "skill": name}          # match() 判定中
-      {"phase": "responding", "skill": name}        # respond() 呼び出し中
-      {"phase": "done", **make_result(...)}           # 完了（通常の結果辞書）
-      {"phase": "no_match"}                          # どれもマッチしなかった
+    Sequentially yield Skill matching/execution process via generator.
+    Each yield is a dictionary:
+      {"phase": "matching", "skill": name}          # During match() judgment
+      {"phase": "responding", "skill": name}        # During respond() call
+      {"phase": "done", **make_result(...)}           # Complete (normal result dictionary)
+      {"phase": "no_match"}                          # Nothing matched
     """
-    # スラッシュコマンドは進捗なしで即返す
+    # Return slash commands immediately without progress
     slash = process_slash_command(user_input)
     if slash:
         yield {"phase": "done", **slash}
@@ -312,10 +313,10 @@ def save_sessions(data: dict):
     with open(SESSIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-# ─── セッション構造ヘルパー ───────────────────────────────────────
+# ─── Session structure helpers ───────────────────────────────────────
 
 def make_branch(user_content: str, bot_result: dict, now: str) -> dict:
-    """1 つのブランチオブジェクトを生成して返す。"""
+    """Generate and return one branch object."""
     return {
         "id":         str(uuid.uuid4()),
         "created_at": now,
@@ -334,7 +335,7 @@ def make_branch(user_content: str, bot_result: dict, now: str) -> dict:
     }
 
 def get_active_path(sess: dict) -> list:
-    """セッションのアクティブブランチのパスを返す。"""
+    """Return path of active branch in session."""
     path = []
     for turn in sess.get("turns", []):
         bi       = turn.get("active_branch", 0)
@@ -350,7 +351,7 @@ def get_active_path(sess: dict) -> list:
     return path
 
 def migrate_session(sess: dict) -> dict:
-    """旧フォーマット（flat messages リスト）を turns/branches 構造へ変換する。"""
+    """Convert old format (flat messages list) to turns/branches structure."""
     messages = sess.get("messages", [])
     turns = []
     i = 0

@@ -6,7 +6,7 @@ Examples:
 - "tell me a joke"
 - "joke"
 - "make me laugh"
-- "ジョークを言って"
+- "say something funny"
 
 The skill:
 - Selects random jokes from its collection

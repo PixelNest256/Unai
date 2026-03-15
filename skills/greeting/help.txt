@@ -7,7 +7,7 @@ Examples:
 - "hi"
 - "good morning"
 - "how are you"
-- "こんにちは"
-- "おはよう"
+- "hey there"
+- "what's up"
 
 The skill responds with appropriate greetings and can handle basic small talk using pattern matching and Levenshtein distance for similar phrases.

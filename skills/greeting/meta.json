@@ -1,1 +1,6 @@
-﻿{"name": "greeting", "description": "挨拶・雑談に対応", "author": "unai-core", "version": "1.0.0"}
+﻿{
+    "name": "greeting",
+    "description": "Handle greetings and casual conversation",
+    "author": "unai-core",
+    "version": "1.0.0"
+}

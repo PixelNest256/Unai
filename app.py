@@ -99,7 +99,7 @@ def chat_sse():
                 }
                 sess.setdefault("turns", []).append(new_turn)
                 sess["updated_at"] = now
-                if sess.get("title") in ("New Chat", "新しいチャット", "") and len(sess["turns"]) == 1:
+                if sess.get("title") in ("New Chat", "", "") and len(sess["turns"]) == 1:
                     first = user_input[:30] + ("…" if len(user_input) > 30 else "")
                     sess["title"] = first
                 for i, s in enumerate(sessions["sessions"]):
@@ -171,7 +171,7 @@ def chat():
             sess["updated_at"] = now
 
             # Auto-title from first user message
-            if sess.get("title") in ("New Chat", "新しいチャット", "") and len(sess["turns"]) == 1:
+            if sess.get("title") in ("New Chat", "", "") and len(sess["turns"]) == 1:
                 first = user_input[:30] + ("…" if len(user_input) > 30 else "")
                 sess["title"] = first
 
@@ -425,8 +425,8 @@ def toggle_skill():
         disabled.append(skill_id)
     priority["disabled"] = disabled
     save_priority(priority)
-    invalidate_skill_cache(skill_id)  # 有効/無効が変わったので再ロードさせる
-    warm_skill_cache()                # 有効な Skill を即座に再キャッシュ
+    invalidate_skill_cache(skill_id)  # Reload since enabled/disabled status changed
+    warm_skill_cache()                # Immediately re-cache enabled Skills
     return jsonify({"ok": True, "disabled": disabled})
 
 
@@ -437,7 +437,7 @@ def reorder_skills():
     priority  = load_priority()
     priority["order"] = new_order
     save_priority(priority)
-    warm_skill_cache()  # 優先順位変更後もキャッシュは有効なので再温めだけ
+    warm_skill_cache()  # Cache remains valid after priority change, just re-warm
     return jsonify({"ok": True})
 
 # ─── Entry point ─────────────────────────────────────────────────

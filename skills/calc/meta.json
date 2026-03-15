@@ -1,1 +1,6 @@
-﻿{"name": "calc", "description": "数式を計算（途中式付き）", "author": "unai-core", "version": "1.0.0"}
+﻿{
+    "name": "calc",
+    "description": "Calculate expressions (with step-by-step)",
+    "author": "unai-core",
+    "version": "1.0.0"
+}
