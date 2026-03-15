@@ -339,6 +339,123 @@ def reorder_skills():
     warm_skill_cache()  # Cache remains valid after priority change, just re-warm
     return jsonify({"ok": True})
 
+# ─── Routes: skill import / export / delete ──────────────────────
+
+@app.route("/api/skills/<skill_id>/export", methods=["GET"])
+def export_skill(skill_id):
+    """Export a skill as a ZIP file (excludes __pycache__)."""
+    import zipfile, io
+    from flask import send_file
+    from unai_core import SKILLS_DIR
+
+    skill_dir = os.path.join(SKILLS_DIR, skill_id)
+    if not os.path.isdir(skill_dir):
+        return jsonify({"error": "skill not found"}), 404
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(skill_dir):
+            # Skip __pycache__
+            dirs[:] = [d for d in dirs if d != "__pycache__"]
+            for fname in files:
+                if fname.endswith(".pyc"):
+                    continue
+                abs_path = os.path.join(root, fname)
+                # Arc name: skill_id/relative_path
+                rel_path = os.path.relpath(abs_path, os.path.dirname(skill_dir))
+                zf.write(abs_path, rel_path)
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{skill_id}.zip",
+    )
+
+
+@app.route("/api/skills/import", methods=["POST"])
+def import_skill():
+    """
+    Import a skill from a ZIP upload.
+    Expects multipart/form-data with field 'file'.
+    The ZIP must contain a top-level directory whose name becomes the skill_id.
+    """
+    import zipfile, io
+    from unai_core import SKILLS_DIR
+
+    if "file" not in request.files:
+        return jsonify({"error": "no file"}), 400
+
+    f = request.files["file"]
+    if not f.filename.endswith(".zip"):
+        return jsonify({"error": "must be a .zip file"}), 400
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(f.read()))
+    except zipfile.BadZipFile:
+        return jsonify({"error": "invalid ZIP"}), 400
+
+    names = zf.namelist()
+    if not names:
+        return jsonify({"error": "empty ZIP"}), 400
+
+    # Derive skill_id from the top-level directory in the ZIP
+    top_dirs = {n.split("/")[0] for n in names if n.split("/")[0]}
+    if len(top_dirs) != 1:
+        return jsonify({"error": "ZIP must contain exactly one top-level folder"}), 400
+
+    skill_id = top_dirs.pop()
+
+    # Validate: must contain skill.py and meta.json at the root level
+    required = {f"{skill_id}/skill.py", f"{skill_id}/meta.json"}
+    present  = set(names)
+    missing  = required - present
+    if missing:
+        return jsonify({"error": f"ZIP is missing required files: {', '.join(missing)}"}), 400
+
+    # Security: reject path traversal
+    for name in names:
+        if ".." in name or name.startswith("/"):
+            return jsonify({"error": "unsafe path in ZIP"}), 400
+
+    dest_dir = os.path.join(SKILLS_DIR, skill_id)
+    already_exists = os.path.isdir(dest_dir)
+
+    zf.extractall(SKILLS_DIR)
+
+    # Refresh skill cache
+    invalidate_skill_cache(skill_id)
+    priority = load_priority()
+    if skill_id not in priority.get("order", []):
+        priority.setdefault("order", []).append(skill_id)
+        save_priority(priority)
+    warm_skill_cache()
+
+    return jsonify({"ok": True, "skill_id": skill_id, "updated": already_exists})
+
+
+@app.route("/api/skills/<skill_id>", methods=["DELETE"])
+def delete_skill(skill_id):
+    """Permanently delete a skill directory."""
+    import shutil
+    from unai_core import SKILLS_DIR
+
+    skill_dir = os.path.join(SKILLS_DIR, skill_id)
+    if not os.path.isdir(skill_dir):
+        return jsonify({"error": "skill not found"}), 404
+
+    shutil.rmtree(skill_dir)
+
+    # Remove from priority
+    priority = load_priority()
+    priority["order"]    = [x for x in priority.get("order",    []) if x != skill_id]
+    priority["disabled"] = [x for x in priority.get("disabled", []) if x != skill_id]
+    save_priority(priority)
+
+    invalidate_skill_cache(skill_id)
+
+    return jsonify({"ok": True})
+
 # ─── Entry point ─────────────────────────────────────────────────
 
 if __name__ == "__main__":
