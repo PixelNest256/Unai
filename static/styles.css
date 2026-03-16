@@ -22,8 +22,8 @@
   --border: #525257;
   --border2: #5e5e63;
   --text: #f0f0f0;
-  --text2: #c0c0c8;
-  --muted: #888890;
+  --text2: #d4d4dc;
+  --muted: #a0a0aa;
   --overlay: rgba(0, 0, 0, 0.72);
 }
 
@@ -36,8 +36,8 @@
   --border: #dcdce4;
   --border2: #c8c8d4;
   --text: #18181d;
-  --text2: #555568;
-  --muted: #9090a4;
+  --text2: #3a3a50;
+  --muted: #6a6a80;
   --overlay: rgba(0, 0, 0, 0.36);
 }
 
