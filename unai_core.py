@@ -30,7 +30,20 @@ NO_SKILL_MESSAGE = "Sorry, there is no corresponding Skill for that question."
 
 # ─── priority.json ───────────────────────────────────────────────
 
+def _create_default_priority() -> dict:
+    """Generate a default priority.json from skill directories found in SKILLS_DIR."""
+    order = sorted([
+        name for name in os.listdir(SKILLS_DIR)
+        if os.path.isdir(os.path.join(SKILLS_DIR, name))
+    ])
+    data = {"order": order, "disabled": []}
+    with open(PRIORITY_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return data
+
 def load_priority() -> dict:
+    if not os.path.exists(PRIORITY_FILE):
+        return _create_default_priority()
     with open(PRIORITY_FILE, "r", encoding="utf-8-sig") as f:
         return json.load(f)
 

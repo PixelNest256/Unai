@@ -605,6 +605,7 @@ async function send() {
   inputEl().style.height = 'auto';
   sendBtn().classList.remove('active');
 
+
   // Show user bubble immediately
   const userPreviewEl = document.createElement('div');
   userPreviewEl.className = 'msg user';
@@ -783,6 +784,8 @@ function wireInput(inp, btn) {
     inp.style.height = 'auto';
     inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
     btn.classList.toggle('active', inp.value.trim().length > 0);
+
+
   });
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
