@@ -28,12 +28,30 @@ When Unai can't answer something, it says so clearly. That honesty is a feature,
 
 ## Quick Start
 
-**Requirements:** Python 3.10+, pip
+**Requirements:** Python 3.10+
+
+### Windows
+
+```bat
+git clone https://github.com/PixelNest256/Unai.git
+cd unai
+setup_venv.bat
+run.bat
+```
+
+Open `http://localhost:5000` in your browser.
+
+`setup_venv.bat` creates an isolated virtual environment (`.venv`) inside the project folder and installs all dependencies. You only need to run it once (or after `requirements.txt` changes).
+
+### macOS / Linux
 
 ```bash
 git clone https://github.com/PixelNest256/Unai.git
 cd unai
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+pip install -e unai-package
 python app.py
 ```
 
