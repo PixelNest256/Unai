@@ -1,8 +1,9 @@
 # Ignore unai-package directory
 unai-package/
 
-#md documents used only on development
+# Documents used only on development
 unai.md
+Unai開発メモ.txt
 
 # Python cache and compiled files
 __pycache__/
