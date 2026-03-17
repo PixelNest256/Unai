@@ -48,3 +48,6 @@ Thumbs.db
 # Session files
 #priority.json
 sessions.db
+
+# Settings file
+settings.json
