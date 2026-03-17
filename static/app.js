@@ -1,4 +1,4 @@
-﻿/* ── DOM refs ─────────────────────────────────── */
+/* ── DOM refs ─────────────────────────────────── */
 const chatEl = document.getElementById('chat');
 const emptyEl = document.getElementById('empty-state');
 const inputAreaEl = document.getElementById('input-area');

@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════════════
+/* ═══════════════════════════════════════════════
    TOKENS
 ═══════════════════════════════════════════════ */
 :root {
@@ -346,16 +346,19 @@ header {
   transition: var(--transition);
   text-decoration: none;
 }
+
 .btn-manage-skills:hover {
   background: var(--surface2);
   color: var(--text);
   border-color: var(--accent-dim);
 }
+
 .btn-manage-skills-arrow {
   margin-left: auto;
   flex-shrink: 0;
   opacity: 0.5;
 }
+
 .btn-manage-skills:hover .btn-manage-skills-arrow {
   opacity: 1;
 }
@@ -576,6 +579,7 @@ header {
 .input-shell:focus-within {
   border-color: var(--border2);
 }
+
 .prompt-prefix {
   color: var(--accent);
   font-size: 13px;
@@ -1282,8 +1286,15 @@ header {
 }
 
 @keyframes progressPulse {
-  0%, 100% { opacity: 0.35; }
-  50%       { opacity: 0.7;  }
+
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 @keyframes blink {

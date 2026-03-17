@@ -1,4 +1,4 @@
-﻿# u/ Unai
+# u/ Unai
 
 > **"un-AI"** — A community-built assistant that runs on lightweight algorithms instead of LLMs.
 

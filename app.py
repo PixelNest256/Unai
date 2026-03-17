@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Unai Web UI - Flask server"""
 
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context

@@ -1,16 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Skills — Unai</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css">
   <style>
     /* ── Skills page layout ── */
-    body { overflow: auto; }
+    body {
+      overflow: auto;
+    }
 
     #skills-page {
       min-height: 100vh;
@@ -47,7 +52,12 @@
       transition: var(--transition);
       text-decoration: none;
     }
-    .btn-back:hover { color: var(--text); border-color: var(--border2); background: var(--surface); }
+
+    .btn-back:hover {
+      color: var(--text);
+      border-color: var(--border2);
+      background: var(--surface);
+    }
 
     .skills-topbar-title {
       font-family: var(--sans);
@@ -57,9 +67,88 @@
     }
 
     .skills-topbar-hint {
-      margin-left: auto;
       font-size: 11px;
       color: var(--muted);
+    }
+
+    /* ── Search box ── */
+    .skills-search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+    }
+
+    .skills-search-icon {
+      position: absolute;
+      left: 10px;
+      color: var(--muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+
+    #skill-search {
+      padding: 5px 28px 5px 30px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      width: 200px;
+      transition: var(--transition);
+      outline: none;
+    }
+
+    #skill-search::placeholder {
+      color: var(--muted);
+    }
+
+    #skill-search:focus {
+      border-color: var(--border2);
+      background: var(--surface2);
+    }
+
+    .skills-search-clear {
+      position: absolute;
+      right: 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: none;
+      align-items: center;
+      padding: 2px;
+      border-radius: 3px;
+      transition: var(--transition);
+    }
+
+    .skills-search-clear:hover {
+      color: var(--text);
+    }
+
+    .skills-search-clear.visible {
+      display: flex;
+    }
+
+    /* filtered-out rows */
+    .skill-row.search-hidden {
+      display: none;
+    }
+
+    /* no results message */
+    #no-results-msg {
+      display: none;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+      padding: 18px 4px;
+      text-align: center;
+    }
+
+    #no-results-msg.visible {
+      display: block;
     }
 
     /* ── Main content ── */
@@ -125,8 +214,14 @@
       transition: var(--transition);
       flex-shrink: 0;
     }
-    .drag-handle:active { cursor: grabbing; }
-    .drag-handle:hover .drag-dot-row { opacity: 1; }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .drag-handle:hover .drag-dot-row {
+      opacity: 1;
+    }
 
     .drag-dot-row {
       display: flex;
@@ -134,6 +229,7 @@
       opacity: 0.3;
       transition: var(--transition);
     }
+
     .drag-dot {
       width: 3px;
       height: 3px;
@@ -212,7 +308,9 @@
     }
 
     /* toggle */
-    .skill-toggle { flex-shrink: 0; }
+    .skill-toggle {
+      flex-shrink: 0;
+    }
 
     /* ── Divider between sections ── */
     .skills-divider {
@@ -232,12 +330,18 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
     }
-    .preload-info { flex: 1; min-width: 0; }
+
+    .preload-info {
+      flex: 1;
+      min-width: 0;
+    }
+
     .preload-name {
       font-size: 13px;
       color: var(--text);
       margin-bottom: 3px;
     }
+
     .preload-desc {
       font-size: 11px;
       color: var(--muted);
@@ -268,8 +372,18 @@
       text-decoration: none;
       white-space: nowrap;
     }
-    .btn-skill-action:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
-    .btn-skill-action.danger:hover { color: var(--danger); border-color: var(--danger); background: rgba(255,94,94,0.06); }
+
+    .btn-skill-action:hover {
+      color: var(--text);
+      border-color: var(--border2);
+      background: var(--surface2);
+    }
+
+    .btn-skill-action.danger:hover {
+      color: var(--danger);
+      border-color: var(--danger);
+      background: rgba(255, 94, 94, 0.06);
+    }
 
     /* ── Import area ── */
     .import-area {
@@ -304,21 +418,40 @@
       cursor: pointer;
       transition: var(--transition);
     }
-    .btn-import:hover { border-color: var(--accent-dim); color: var(--accent); background: rgba(127,255,110,0.05); }
 
-    #import-file { display: none; }
+    .btn-import:hover {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+      background: rgba(127, 255, 110, 0.05);
+    }
+
+    #import-file {
+      display: none;
+    }
 
     .import-status {
       font-size: 11px;
       color: var(--muted);
       font-family: var(--mono);
     }
-    .import-status.ok  { color: var(--accent); }
-    .import-status.err  { color: var(--danger); }
-    .import-status.warn { color: #f0a500; }
+
+    .import-status.ok {
+      color: var(--accent);
+    }
+
+    .import-status.err {
+      color: var(--danger);
+    }
+
+    .import-status.warn {
+      color: #f0a500;
+    }
 
     /* ── Confirm overlay (reuse existing styles but add scoped ids) ── */
-    #delete-overlay.open { display: flex !important; }
+    #delete-overlay.open {
+      display: flex !important;
+    }
+
     /* ── Save indicator ── */
     #save-indicator {
       position: fixed;
@@ -336,130 +469,174 @@
       transition: opacity 0.25s;
       z-index: 20;
     }
-    #save-indicator.show { opacity: 1; }
+
+    #save-indicator.show {
+      opacity: 1;
+    }
   </style>
 </head>
+
 <body>
-<div id="skills-page">
+  <div id="skills-page">
 
-  <!-- ── Top bar ── -->
-  <div class="skills-topbar">
-    <a href="/" class="btn-back">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M8 1L3 6l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Back
-    </a>
-    <span class="skills-topbar-title">Skills</span>
-    <span class="skills-topbar-hint">Drag to reorder · Toggle to enable/disable</span>
-  </div>
-
-  <!-- ── Content ── -->
-  <div class="skills-content">
-
-    <!-- Import area -->
-    <div class="import-area">
-      <span class="import-label">Install Skill from ZIP</span>
-      <button class="btn-import" id="btn-import-trigger">
+    <!-- ── Top bar ── -->
+    <div class="skills-topbar">
+      <a href="/" class="btn-back">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M6 1v7M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M1 9v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M8 1L3 6l5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+            stroke-linejoin="round" />
         </svg>
-        Choose ZIP…
-      </button>
-      <input type="file" id="import-file" accept=".zip">
-      <span class="import-status" id="import-status"></span>
-    </div>
-    <!-- Skills list -->
-    <div class="section-label">Active Skills — priority order</div>
-    <div id="skill-list">
-      <!-- populated by JS -->
-    </div>
-
-    <div class="skills-divider"></div>
-
-    <!-- Preload setting -->
-    <div class="section-label">Performance</div>
-    <div class="preload-row">
-      <div class="preload-info">
-        <div class="preload-name">Skill preloading</div>
-        <div class="preload-desc">
-          Load all enabled Skills into memory at startup.<br>
-          Eliminates the delay on the first call to each Skill.
-        </div>
+        Back
+      </a>
+      <span class="skills-topbar-title">Skills</span>
+      <span class="skills-topbar-hint">Drag to reorder · Toggle to enable/disable</span>
+      <div class="skills-search-wrap">
+        <span class="skills-search-icon">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.2" />
+            <path d="M8 8l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+          </svg>
+        </span>
+        <input type="text" id="skill-search" placeholder="Filter skills…" autocomplete="off" spellcheck="false">
+        <button class="skills-search-clear" id="skill-search-clear" tabindex="-1" aria-label="Clear search">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+          </svg>
+        </button>
       </div>
-      <label class="toggle">
-        <input type="checkbox" id="toggle-preload" checked>
-        <span class="toggle-track"></span>
-      </label>
     </div>
 
+    <!-- ── Content ── -->
+    <div class="skills-content">
+
+      <!-- Import area -->
+      <div class="import-area">
+        <span class="import-label">Install Skill from ZIP</span>
+        <button class="btn-import" id="btn-import-trigger">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v7M3 5l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path d="M1 9v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V9" stroke="currentColor" stroke-width="1.3"
+              stroke-linecap="round" />
+          </svg>
+          Choose ZIP…
+        </button>
+        <input type="file" id="import-file" accept=".zip">
+        <span class="import-status" id="import-status"></span>
+      </div>
+      <!-- Skills list -->
+      <div class="section-label">Active Skills — priority order</div>
+      <div id="skill-list">
+        <!-- populated by JS -->
+      </div>
+      <div id="no-results-msg">No skills match your search.</div>
+
+      <div class="skills-divider"></div>
+
+      <!-- Preload setting -->
+      <div class="section-label">Performance</div>
+      <div class="preload-row">
+        <div class="preload-info">
+          <div class="preload-name">Skill preloading</div>
+          <div class="preload-desc">
+            Load all enabled Skills into memory at startup.<br>
+            Eliminates the delay on the first call to each Skill.
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-preload" checked>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+    </div>
   </div>
-</div>
 
-<!-- Delete confirm overlay -->
-<div id="delete-overlay" style="display:none;position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);z-index:400;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:26px 28px;max-width:320px;width:90%;animation:scaleIn 0.16s ease;">
-    <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Delete Skill</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.6;">
-      "<span id="delete-skill-name"></span>" will be permanently deleted from disk.
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button id="cancel-delete" style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;">Cancel</button>
-      <button id="confirm-delete" style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--danger);background:rgba(255,94,94,0.07);color:var(--danger);cursor:pointer;">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Delete confirm overlay -->
-<div id="delete-overlay" style="display:none;position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);z-index:400;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:26px 28px;max-width:320px;width:90%;animation:scaleIn 0.16s ease;">
-    <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Delete Skill</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.6;">
-      "<span id="delete-skill-name"></span>" will be permanently deleted from disk.
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button id="cancel-delete" style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;">Cancel</button>
-      <button id="confirm-delete" style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--danger);background:rgba(255,94,94,0.07);color:var(--danger);cursor:pointer;">Delete</button>
+  <!-- Delete confirm overlay -->
+  <div id="delete-overlay"
+    style="display:none;position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);z-index:400;align-items:center;justify-content:center;">
+    <div
+      style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:26px 28px;max-width:320px;width:90%;animation:scaleIn 0.16s ease;">
+      <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Delete
+        Skill</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.6;">
+        "<span id="delete-skill-name"></span>" will be permanently deleted from disk.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button id="cancel-delete"
+          style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;">Cancel</button>
+        <button id="confirm-delete"
+          style="font-family:var(--mono);font-size:12px;padding:7px 14px;border-radius:var(--radius-sm);border:1px solid var(--danger);background:rgba(255,94,94,0.07);color:var(--danger);cursor:pointer;">Delete</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="save-indicator">Saved</div>
+  <div id="save-indicator">Saved</div>
 
-<script>
-/* ── Theme (inherit from localStorage) ── */
-const prefs = (() => { try { return JSON.parse(localStorage.getItem('unai_prefs')) || {}; } catch { return {}; } })();
-document.documentElement.setAttribute('data-theme', prefs.theme || 'dark');
+  <script>
+    /* ── Theme (inherit from localStorage) ── */
+    const prefs = (() => { try { return JSON.parse(localStorage.getItem('unai_prefs')) || {}; } catch { return {}; } })();
+    document.documentElement.setAttribute('data-theme', prefs.theme || 'dark');
 
-/* ── Save indicator ── */
-const saveInd = document.getElementById('save-indicator');
-let saveTimer;
-function flashSaved() {
-  saveInd.classList.add('show');
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => saveInd.classList.remove('show'), 1600);
-}
+    /* ── Save indicator ── */
+    const saveInd = document.getElementById('save-indicator');
+    let saveTimer;
+    function flashSaved() {
+      saveInd.classList.add('show');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveInd.classList.remove('show'), 1600);
+    }
 
-/* ── Drag & Drop state ── */
-let dragSrcId = null;
-let skillOrder = [];   // current order of skill IDs
+    /* ── Drag & Drop state ── */
+    let dragSrcId = null;
+    let skillOrder = [];   // current order of skill IDs (always full list, unfiltered)
 
-/* ── Render skill list ── */
-function renderSkills(skills) {
-  skillOrder = skills.map(s => s.id);
-  const list = document.getElementById('skill-list');
-  list.innerHTML = '';
+    /* ── Search state ── */
+    let currentQuery = '';
 
-  skills.forEach((skill, idx) => {
-    const row = document.createElement('div');
-    row.className = 'skill-row' + (skill.enabled ? '' : ' disabled-row');
-    row.dataset.id = skill.id;
-    row.draggable = true;
+    /* ── Apply search filter to rendered rows ── */
+    function applyFilter() {
+      const q = currentQuery.trim().toLowerCase();
+      const rows = document.querySelectorAll('#skill-list .skill-row');
+      let visibleCount = 0;
 
-    const hasExternal = skill.request_urls && skill.request_urls.length > 0;
+      rows.forEach(row => {
+        if (!q) {
+          row.classList.remove('search-hidden');
+          visibleCount++;
+          return;
+        }
+        const name = (row.dataset.skillName || '').toLowerCase();
+        const desc = (row.dataset.skillDesc || '').toLowerCase();
+        const author = (row.dataset.skillAuthor || '').toLowerCase();
+        const match = name.includes(q) || desc.includes(q) || author.includes(q);
+        row.classList.toggle('search-hidden', !match);
+        if (match) visibleCount++;
+      });
 
-    row.innerHTML = `
+      const noMsg = document.getElementById('no-results-msg');
+      noMsg.classList.toggle('visible', rows.length > 0 && visibleCount === 0);
+    }
+
+    /* ── Render skill list ── */
+    function renderSkills(skills) {
+      skillOrder = skills.map(s => s.id);
+      const list = document.getElementById('skill-list');
+      list.innerHTML = '';
+
+      skills.forEach((skill, idx) => {
+        const row = document.createElement('div');
+        row.className = 'skill-row' + (skill.enabled ? '' : ' disabled-row');
+        row.dataset.id = skill.id;
+        // Store searchable fields as data attributes
+        row.dataset.skillName = skill.name || skill.id || '';
+        row.dataset.skillDesc = skill.description || '';
+        row.dataset.skillAuthor = skill.author || '';
+        row.draggable = true;
+
+        const hasExternal = skill.request_urls && skill.request_urls.length > 0;
+
+        row.innerHTML = `
       <div class="drag-handle" title="Drag to reorder">
         <div class="drag-dot-row"><div class="drag-dot"></div><div class="drag-dot"></div></div>
         <div class="drag-dot-row"><div class="drag-dot"></div><div class="drag-dot"></div></div>
@@ -497,177 +674,199 @@ function renderSkills(skills) {
       </label>
     `;
 
-    /* ── Delete button ── */
-    row.querySelector('.skill-delete-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      showDeleteConfirm(e.currentTarget.dataset.id, e.currentTarget.dataset.name);
-    });
+        /* ── Delete button ── */
+        row.querySelector('.skill-delete-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          showDeleteConfirm(e.currentTarget.dataset.id, e.currentTarget.dataset.name);
+        });
 
-    /* ── Enable/Disable toggle ── */
-    row.querySelector('.skill-enable-toggle').addEventListener('change', async (e) => {
-      e.stopPropagation();
+        /* ── Enable/Disable toggle ── */
+        row.querySelector('.skill-enable-toggle').addEventListener('change', async (e) => {
+          e.stopPropagation();
+          try {
+            await fetch('/api/skills/toggle', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: skill.id }),
+            });
+            row.classList.toggle('disabled-row', !e.target.checked);
+            flashSaved();
+          } catch { e.target.checked = !e.target.checked; }
+        });
+
+        /* ── Drag events ── */
+        row.addEventListener('dragstart', e => {
+          dragSrcId = skill.id;
+          row.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          document.querySelectorAll('.skill-row').forEach(r => r.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (dragSrcId !== skill.id) row.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', async e => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+          if (dragSrcId === skill.id) return;
+
+          // Reorder in local array (skillOrder is always the full unfiltered list)
+          const fromIdx = skillOrder.indexOf(dragSrcId);
+          const toIdx = skillOrder.indexOf(skill.id);
+          skillOrder.splice(fromIdx, 1);
+          skillOrder.splice(toIdx, 0, dragSrcId);
+
+          // Reload to re-render with updated badges
+          await saveOrder();
+          await loadSkills();
+        });
+
+        list.appendChild(row);
+      });
+
+      // Re-apply current filter after render
+      applyFilter();
+    }
+
+    async function saveOrder() {
       try {
-        await fetch('/api/skills/toggle', {
+        await fetch('/api/skills/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: skill.id }),
+          body: JSON.stringify({ order: skillOrder }),
         });
-        row.classList.toggle('disabled-row', !e.target.checked);
         flashSaved();
-      } catch { e.target.checked = !e.target.checked; }
-    });
-
-    /* ── Drag events ── */
-    row.addEventListener('dragstart', e => {
-      dragSrcId = skill.id;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      document.querySelectorAll('.skill-row').forEach(r => r.classList.remove('drag-over'));
-    });
-    row.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (dragSrcId !== skill.id) row.classList.add('drag-over');
-    });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-    row.addEventListener('drop', async e => {
-      e.preventDefault();
-      row.classList.remove('drag-over');
-      if (dragSrcId === skill.id) return;
-
-      // Reorder in local array
-      const fromIdx = skillOrder.indexOf(dragSrcId);
-      const toIdx   = skillOrder.indexOf(skill.id);
-      skillOrder.splice(fromIdx, 1);
-      skillOrder.splice(toIdx, 0, dragSrcId);
-
-      // Reload to re-render with updated badges
-      await saveOrder();
-      await loadSkills();
-    });
-
-    list.appendChild(row);
-  });
-}
-
-async function saveOrder() {
-  try {
-    await fetch('/api/skills/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order: skillOrder }),
-    });
-    flashSaved();
-  } catch { /* silent */ }
-}
-
-/* ── Load skills from API ── */
-async function loadSkills() {
-  try {
-    const res    = await fetch('/api/skills');
-    const skills = await res.json();
-    renderSkills(skills);
-  } catch { /* silent */ }
-}
-
-/* ── Preload toggle ── */
-const preloadToggle = document.getElementById('toggle-preload');
-
-async function loadPreloadSetting() {
-  try {
-    const res  = await fetch('/api/settings');
-    const data = await res.json();
-    preloadToggle.checked = data.preload_skills !== false;
-  } catch { preloadToggle.checked = true; }
-}
-
-preloadToggle.addEventListener('change', async () => {
-  try {
-    await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ preload_skills: preloadToggle.checked }),
-    });
-    flashSaved();
-  } catch { preloadToggle.checked = !preloadToggle.checked; }
-});
-
-/* ── Utility ── */
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-/* ── Delete confirm ── */
-let deleteTarget = null;
-
-function showDeleteConfirm(id, name) {
-  deleteTarget = id;
-  const overlay = document.getElementById('delete-overlay');
-  document.getElementById('delete-skill-name').textContent = name;
-  overlay.classList.add('open');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('cancel-delete').addEventListener('click', () => {
-    document.getElementById('delete-overlay').classList.remove('open');
-    deleteTarget = null;
-  });
-  document.getElementById('confirm-delete').addEventListener('click', async () => {
-    if (!deleteTarget) return;
-    const id = deleteTarget;
-    document.getElementById('delete-overlay').classList.remove('open');
-    deleteTarget = null;
-    try {
-      const res = await fetch(`/api/skills/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.ok) { flashSaved(); await loadSkills(); }
-      else showImportStatus('Delete failed: ' + (data.error || '?'), 'err');
-    } catch { showImportStatus('Delete failed', 'err'); }
-  });
-});
-
-/* ── Import ── */
-function showImportStatus(msg, cls = '') {
-  const el = document.getElementById('import-status');
-  el.textContent = msg;
-  el.className = 'import-status ' + cls;
-}
-
-document.getElementById('btn-import-trigger').addEventListener('click', () => {
-  document.getElementById('import-file').click();
-});
-
-document.getElementById('import-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  e.target.value = '';   // reset so same file can be re-selected
-  showImportStatus('Installing…');
-  const fd = new FormData();
-  fd.append('file', file);
-  try {
-    const res  = await fetch('/api/skills/import', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.ok) {
-      let msg = data.updated ? `Updated: ${data.skill_id}` : `Installed: ${data.skill_id}`;
-      if (data.pip) {
-        msg += data.pip.ok ? '  (deps installed)' : '  ⚠ deps failed';
-      }
-      showImportStatus(msg, data.pip && !data.pip.ok ? 'warn' : 'ok');
-      if (data.pip && !data.pip.ok) {
-        console.warn('pip install output:', data.pip.output);
-      }
-      await loadSkills();
-    } else {
-      showImportStatus('Error: ' + (data.error || 'unknown'), 'err');
+      } catch { /* silent */ }
     }
-  } catch { showImportStatus('Network error', 'err'); }
-});
-/* ── Init ── */
-loadSkills();
-loadPreloadSetting();
-</script>
+
+    /* ── Load skills from API ── */
+    async function loadSkills() {
+      try {
+        const res = await fetch('/api/skills');
+        const skills = await res.json();
+        renderSkills(skills);
+      } catch { /* silent */ }
+    }
+
+    /* ── Search input wiring ── */
+    const searchInput = document.getElementById('skill-search');
+    const searchClear = document.getElementById('skill-search-clear');
+
+    searchInput.addEventListener('input', () => {
+      currentQuery = searchInput.value;
+      searchClear.classList.toggle('visible', currentQuery.length > 0);
+      applyFilter();
+    });
+
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      currentQuery = '';
+      searchClear.classList.remove('visible');
+      searchInput.focus();
+      applyFilter();
+    });
+
+    /* ── Preload toggle ── */
+    const preloadToggle = document.getElementById('toggle-preload');
+
+    async function loadPreloadSetting() {
+      try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        preloadToggle.checked = data.preload_skills !== false;
+      } catch { preloadToggle.checked = true; }
+    }
+
+    preloadToggle.addEventListener('change', async () => {
+      try {
+        await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preload_skills: preloadToggle.checked }),
+        });
+        flashSaved();
+      } catch { preloadToggle.checked = !preloadToggle.checked; }
+    });
+
+    /* ── Utility ── */
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ── Delete confirm ── */
+    let deleteTarget = null;
+
+    function showDeleteConfirm(id, name) {
+      deleteTarget = id;
+      const overlay = document.getElementById('delete-overlay');
+      document.getElementById('delete-skill-name').textContent = name;
+      overlay.classList.add('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('cancel-delete').addEventListener('click', () => {
+        document.getElementById('delete-overlay').classList.remove('open');
+        deleteTarget = null;
+      });
+      document.getElementById('confirm-delete').addEventListener('click', async () => {
+        if (!deleteTarget) return;
+        const id = deleteTarget;
+        document.getElementById('delete-overlay').classList.remove('open');
+        deleteTarget = null;
+        try {
+          const res = await fetch(`/api/skills/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.ok) { flashSaved(); await loadSkills(); }
+          else showImportStatus('Delete failed: ' + (data.error || '?'), 'err');
+        } catch { showImportStatus('Delete failed', 'err'); }
+      });
+    });
+
+    /* ── Import ── */
+    function showImportStatus(msg, cls = '') {
+      const el = document.getElementById('import-status');
+      el.textContent = msg;
+      el.className = 'import-status ' + cls;
+    }
+
+    document.getElementById('btn-import-trigger').addEventListener('click', () => {
+      document.getElementById('import-file').click();
+    });
+
+    document.getElementById('import-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      e.target.value = '';   // reset so same file can be re-selected
+      showImportStatus('Installing…');
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/api/skills/import', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          let msg = data.updated ? `Updated: ${data.skill_id}` : `Installed: ${data.skill_id}`;
+          if (data.pip) {
+            msg += data.pip.ok ? '  (deps installed)' : '  ⚠ deps failed';
+          }
+          showImportStatus(msg, data.pip && !data.pip.ok ? 'warn' : 'ok');
+          if (data.pip && !data.pip.ok) {
+            console.warn('pip install output:', data.pip.output);
+          }
+          await loadSkills();
+        } else {
+          showImportStatus('Error: ' + (data.error || 'unknown'), 'err');
+        }
+      } catch { showImportStatus('Network error', 'err'); }
+    });
+    /* ── Init ── */
+    loadSkills();
+    loadPreloadSetting();
+  </script>
 </body>
+
 </html>

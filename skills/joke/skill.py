@@ -1,4 +1,4 @@
-﻿"""Random joke skill"""
+"""Random joke skill"""
 import re
 import random
 

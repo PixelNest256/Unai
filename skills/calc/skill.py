@@ -1,4 +1,4 @@
-﻿"""Calculation skill - fast eval with optional sympy for algebra"""
+"""Calculation skill - fast eval with optional sympy for algebra"""
 import re
 import ast
 import operator
