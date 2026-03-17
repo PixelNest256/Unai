@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 unai_core.py — Core logic of Unai
 
@@ -104,6 +104,50 @@ def load_meta(skill_name: str) -> dict:
     with open(meta_path, "r", encoding="utf-8-sig") as f:
         return json.load(f)
 
+
+# ─── Valves (per-skill user settings) ────────────────────────────────
+
+def get_valve_definitions(skill_name: str) -> list[dict]:
+    """
+    Return valve definitions from meta.json['valves'].
+    Each entry: {"key": str, "label": str, "type": "text"|"password"|"number", "description": str, "default": str}
+    """
+    meta = load_meta(skill_name)
+    return meta.get("valves", [])
+
+def load_valves(skill_name: str) -> dict:
+    """
+    Read saved valve values from skills/{skill_id}/valves.json.
+    Returns dict of {key: value}. Missing keys default to valve's 'default' or ''.
+    """
+    valves_path = os.path.join(SKILLS_DIR, skill_name, "valves.json")
+    defs = get_valve_definitions(skill_name)
+    defaults = {v["key"]: v.get("default", "") for v in defs}
+    if not os.path.exists(valves_path):
+        return defaults
+    try:
+        with open(valves_path, "r", encoding="utf-8") as f:
+            saved = json.load(f)
+        return {**defaults, **saved}
+    except Exception:
+        return defaults
+
+def save_valves(skill_name: str, values: dict):
+    """Persist valve values to skills/{skill_id}/valves.json."""
+    valves_path = os.path.join(SKILLS_DIR, skill_name, "valves.json")
+    with open(valves_path, "w", encoding="utf-8") as f:
+        json.dump(values, f, ensure_ascii=False, indent=2)
+
+def load_help(skill_name: str) -> str:
+    """Read help.txt content. Returns empty string if not found."""
+    help_path = os.path.join(SKILLS_DIR, skill_name, "help.txt")
+    if not os.path.exists(help_path):
+        return ""
+    try:
+        with open(help_path, "r", encoding="utf-8-sig") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
 def get_all_skills() -> list[dict]:
     """Return meta information list of all Skills under skills/."""
     skills = []
@@ -111,6 +155,8 @@ def get_all_skills() -> list[dict]:
         if os.path.isdir(os.path.join(SKILLS_DIR, name)):
             meta = load_meta(name)
             meta["id"] = name
+            meta["has_valves"] = bool(meta.get("valves"))
+            meta["has_help"]   = os.path.exists(os.path.join(SKILLS_DIR, name, "help.txt"))
             skills.append(meta)
     return skills
 

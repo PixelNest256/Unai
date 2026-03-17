@@ -1,0 +1,29 @@
+{
+    "name": "Valves Test",
+    "description": "Displays the current Valve values. Type \"valves-test\" to run.",
+    "author": "unai-core",
+    "version": "1.0.0",
+    "valves": [
+        {
+            "key": "api_key",
+            "label": "API Key",
+            "type": "password",
+            "description": "A sample API key field (password type — input is masked).",
+            "default": ""
+        },
+        {
+            "key": "username",
+            "label": "Username",
+            "type": "text",
+            "description": "A sample plain-text field.",
+            "default": "guest"
+        },
+        {
+            "key": "max_results",
+            "label": "Max Results",
+            "type": "number",
+            "description": "A sample numeric field.",
+            "default": "10"
+        }
+    ]
+}

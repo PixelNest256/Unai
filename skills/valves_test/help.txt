@@ -1,0 +1,23 @@
+Valves Test Skill
+
+A developer utility that displays the Valve values currently saved for this Skill.
+
+Trigger:
+  valves-test
+  valves test
+  valvestest
+
+Output:
+  Shows each defined Valve — its label, key name, type, and current saved value.
+  Password-type values are masked with asterisks.
+  Fields that have not been set yet are shown as "(not set)".
+
+How to configure Valves:
+  Open the Skills page and select "Valves Test" from the list.
+  The Valves section at the bottom of the detail pane shows all available fields.
+  Fill in values and click Save.
+
+Defined Valves:
+  api_key      (password) — A sample API key field.
+  username     (text)     — A sample plain-text field.  Default: "guest"
+  max_results  (number)   — A sample numeric field.     Default: 10

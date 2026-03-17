@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Unai Web UI - Flask server"""
 
 from flask import Flask, request, jsonify, render_template, Response, stream_with_context
@@ -11,10 +11,11 @@ from unai_core import (
     get_all_skills,
     NO_SKILL_MESSAGE,
     warm_skill_cache, invalidate_skill_cache,
-    UNAI_DIR,
+    UNAI_DIR, SKILLS_DIR,
     init_db,
     db_list_sessions, db_create_session, db_get_session, db_delete_session, db_rename_session,
     db_append_turn, db_add_branch, db_set_active_branch, db_truncate_turns_after, db_auto_title,
+    get_valve_definitions, load_valves, save_valves, load_help,
 )
 
 app = Flask(__name__)
@@ -481,6 +482,44 @@ def delete_skill(skill_id):
 
     return jsonify({"ok": True})
 
+
+# ─── Routes: valves ──────────────────────────────────────────────
+
+@app.route("/api/skills/<skill_id>/valves", methods=["GET"])
+def get_valves(skill_id):
+    """Return valve definitions and current values for a skill."""
+    skill_dir = os.path.join(SKILLS_DIR, skill_id)
+    if not os.path.isdir(skill_dir):
+        return jsonify({"error": "skill not found"}), 404
+    defs   = get_valve_definitions(skill_id)
+    values = load_valves(skill_id)
+    return jsonify({"definitions": defs, "values": values})
+
+
+@app.route("/api/skills/<skill_id>/valves", methods=["POST"])
+def update_valves(skill_id):
+    """Save valve values for a skill."""
+    skill_dir = os.path.join(SKILLS_DIR, skill_id)
+    if not os.path.isdir(skill_dir):
+        return jsonify({"error": "skill not found"}), 404
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "invalid body"}), 400
+    # Only store keys that are defined in the valve definitions
+    defs        = get_valve_definitions(skill_id)
+    valid_keys  = {v["key"] for v in defs}
+    filtered    = {k: v for k, v in data.items() if k in valid_keys}
+    save_valves(skill_id, filtered)
+    return jsonify({"ok": True, "values": filtered})
+
+
+@app.route("/api/skills/<skill_id>/help", methods=["GET"])
+def get_skill_help(skill_id):
+    """Return the help.txt content for a skill."""
+    skill_dir = os.path.join(SKILLS_DIR, skill_id)
+    if not os.path.isdir(skill_dir):
+        return jsonify({"error": "skill not found"}), 404
+    return jsonify({"help": load_help(skill_id)})
 # ─── Entry point ─────────────────────────────────────────────────
 
 if __name__ == "__main__":
