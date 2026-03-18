@@ -2,18 +2,33 @@
 chcp 65001 > nul
 setlocal
 
-set "PYTHON=C:\Users\Kasam\.pyenv\pyenv-win\versions\3.12.0\python.exe"
+set "PYENV_PYTHON=%USERPROFILE%\.pyenv\pyenv-win\versions\3.12.0\python.exe"
+if exist "%PYENV_PYTHON%" (
+    set "PYTHON=%PYENV_PYTHON%"
+) else (
+    set "PYTHON=python"
+)
 set "VENV_DIR=%~dp0.venv"
 
 echo === Unai Virtual Environment Setup ===
 echo.
 
 :: Check Python existence
-if not exist "%PYTHON%" (
-    echo [ERROR] Python not found: %PYTHON%
-    echo Please install Python 3.12.0 using pyenv.
-    pause
-    exit /b 1
+if "%PYTHON%"=="python" (
+    where python >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Python not found. Please install Python 3.12.0 using pyenv or add Python to PATH.
+        pause
+        exit /b 1
+    )
+    echo [INFO] pyenv not found, using Python from PATH.
+) else (
+    if not exist "%PYTHON%" (
+        echo [ERROR] Python not found: %PYTHON%
+        echo Please install Python 3.12.0 using pyenv.
+        pause
+        exit /b 1
+    )
 )
 
 :: Create virtual environment (skip if already exists)
