@@ -4,6 +4,7 @@ unai-package/
 # Documents used only on development
 unai.md
 Unai開発メモ.txt
+website.md
 
 # Python cache and compiled files
 __pycache__/
