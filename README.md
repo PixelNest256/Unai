@@ -1,22 +1,31 @@
-# u/ Unai
+# Unai
 
-> **"un-AI"** — A community-built assistant that runs on lightweight algorithms instead of LLMs.
+Unai is a chat application that builds responses from Python `Skill`s instead of using an LLM.
+When a message arrives, Unai tries each Skill in the order defined by `priority.json`, calls the first Skill whose `match()` returns `True`, and then runs that Skill's `respond()` function.
+If nothing matches, Unai returns a fixed fallback message.
 
-Unai looks and feels like a modern AI chat service, but nothing inside it is an AI. Every response comes from a small, purpose-built **Skill** — a plain Python module that does one thing well. No GPUs, no API keys, no cloud calls (unless a Skill explicitly needs them).
+Some Skills talk to external services, but the core application is local Python code.
 
 ---
 
-## Why
+## Features
 
-| | LLM assistant | Unai |
-|---|---|---|
-| Response time | Seconds ~ Minutes | Milliseconds |
-| Power draw | High (GPU) | Near zero |
-| Cost per query | API usage fee | Free |
-| Scope | Everything (often hallucinated) | Limited, but honest |
-| Transparency | Black box | Every line of code is readable |
-
-When Unai can't answer something, it says so clearly. That honesty is a feature, not a bug.
+- Skill-based response routing
+- Flask-based web chat UI
+- SQLite-backed session storage
+- Branching conversation history
+  - Regenerate a turn to add a new branch
+  - Edit a user message to truncate later turns and create a new branch
+  - Switch between branches
+- SSE-based progress updates while a Skill is being selected
+- Response metadata: token count, elapsed time, and tokens/sec
+- Skills management page
+  - Reorder Skills
+  - Enable or disable Skills
+  - Import and export Skills as ZIP files
+  - Delete Skills
+  - Edit `valves` settings
+- `/help` and `/help <skill>` slash commands
 
 ---
 
@@ -26,11 +35,18 @@ When Unai can't answer something, it says so clearly. That honesty is a feature,
 
 ---
 
-## Quick Start
+## Requirements
 
-**Requirements:** Python 3.10+
+- Python 3.10 or newer
+- `pip`
 
-### Windows
+Dependencies are listed in `requirements.txt`.
+
+---
+
+## Setup
+
+### 1. Windows: use the `.bat` scripts
 
 ```bat
 git clone https://github.com/PixelNest256/Unai.git
@@ -39,208 +55,260 @@ setup_venv.bat
 run.bat
 ```
 
-Open `http://localhost:5000` in your browser.
+`setup_venv.bat` creates `.venv` and installs dependencies.
+`run.bat` starts the app.
 
-`setup_venv.bat` creates an isolated virtual environment (`.venv`) inside the project folder and installs all dependencies. You only need to run it once (or after `requirements.txt` changes).
+`setup_venv.bat` is tied to the author's local Python path, so if that path does not exist on your machine, use one of the manual setup methods below or adjust the batch file.
 
-### macOS / Linux
+### 2. Windows: manual setup and run
 
 ```bash
 git clone https://github.com/PixelNest256/Unai.git
 cd unai
-python3 -m venv .venv
+python -m venv .venv
+```
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+If you prefer `cmd`, use:
+
+```bat
+.venv\Scripts\activate.bat
+```
+
+Then install dependencies and start the app:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+### 3. macOS / Linux: manual setup and run
+
+```bash
+git clone https://github.com/PixelNest256/Unai.git
+cd unai
+python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
 ```
 
+### 4. Open the app
 Open `http://localhost:5000` in your browser.
 
 ---
 
 ## How It Works
 
-```
-User input
-    ↓
-Each Skill's match() is called in priority order (priority.json)
-    ↓  First Skill that returns True wins
-respond() generates the reply
-    ↓
-Token count · elapsed time · t/s are shown alongside the response
-```
+Unai's processing flow is straightforward:
 
-Skills are tried in the order defined in `priority.json`. The first one whose `match()` returns `True` handles the request.
+1. Check whether the input is a slash command
+2. Try each Skill in `skills/priority.json` order
+3. Call `respond()` on the first Skill whose `match()` returns `True`
+4. Normalize the response into a shared result format and return it to the UI
+
+In the web UI, `/api/chat/sse` streams Skill-selection progress so the frontend can show `matching` and `responding` states.
+The response text can be animated token by token on the client side.
 
 ---
 
-## Project Structure
+## Directory Structure
 
-```
+```text
 unai/
-├── app.py              # Flask web server
-├── unai_core.py        # Core logic
-├── sessions.db         # SQLite chat history
-├── settings.json       # App settings (auto-generated)
-├── templates/
-│   ├── index.html      # Chat UI
-│   └── skills.html     # Skill management page
+├── app.py
+├── unai_core.py
+├── requirements.txt
+├── sessions.db
+├── settings.json
 ├── static/
-│   ├── app.js          # Frontend logic
-│   └── styles.css      # Styles
+├── templates/
 └── skills/
-    ├── priority.json   # Skill priority order and enabled/disabled state
-    ├── calc/
+    ├── priority.json
     ├── greeting/
-    ├── joke/
+    ├── calc/
     ├── wikipedia/
-    └── ddgs/
+    ├── joke/
+    ├── ddgs/
+    └── valves_test/
 ```
 
 ---
 
 ## Built-in Skills
 
-| Skill | What it does | External requests |
+| Skill | Purpose | Implementation notes |
 |---|---|---|
-| `greeting` | Greetings and small talk (rule-based + Levenshtein distance) | None |
-| `calc` | Arithmetic and algebra with step-by-step output (uses sympy) | None |
-| `wikipedia` | Fetches Wikipedia summaries | `en.wikipedia.org` |
-| `joke` | Returns a random joke | None |
-| `ddgs` | Web search via DuckDuckGo | `duckduckgo.com` |
+| `greeting` | Greetings and small talk | Rule-based matching with Levenshtein distance for near-matches |
+| `calc` | Calculation | Safe AST-based evaluation; `expand`, `factor`, and `solve` use SymPy |
+| `wikipedia` | Wikipedia summaries | Uses the English Wikipedia summary API |
+| `ddgs` | Search summaries | Summarizes the first DuckDuckGo search result |
+| `joke` | Random jokes | Returns a random joke from a predefined list |
+| `valves_test` | Development sample | Displays the saved `valves` values for the Skill |
 
 ---
 
-## Web UI Features
+## Skills Page
 
-- **Chat interface** — clean, minimal, keyboard-driven
-- **Branching history** — regenerate any response or edit any message; all variants are saved and browsable with `< 1/2 >` navigation
-- **Skill stats** — every response shows `[skill]  N tok · Xms · Y t/s`
-- **Skills page** (`/skills`) — reorder by drag & drop, toggle on/off, export as ZIP, import from ZIP, delete
+The `/skills` page supports:
+
+- Searching Skills
+- Drag-and-drop reordering
+- Enabling and disabling Skills
+- Importing Skills from ZIP files
+- Exporting Skills to ZIP files
+- Deleting Skills
+- Editing per-Skill `valves`
+- Viewing `help.txt`
+
+### ZIP import format
+
+The ZIP file must contain exactly one top-level folder, and that folder must include at least `skill.py` and `meta.json`.
+If `requirements.txt` is present, Unai runs `pip install -r` during import.
 
 ---
 
 ## Writing a Skill
 
-Create a folder under `skills/` with two required files:
+Add a new Skill under `skills/<skill_id>/`.
 
-```
+### Required files
+
+```text
 skills/
 └── my_skill/
     ├── skill.py
-    ├── help.txt
-    ├── requirements.txt
     └── meta.json
 ```
-
-**`skill.py`** — implement exactly two functions:
-
-```python
-def match(text: str) -> bool:
-    """Return True if this Skill should handle the input."""
-    return "hello" in text.lower()
-
-def respond(text: str) -> str:
-    """Return the response string."""
-    return "Hi there!"
-```
-
-**`meta.json`** — Skill metadata:
-
-```json
-{
-  "name":        "My Skill",
-  "description": "What this Skill does",
-  "author":      "your-name",
-  "version":     "1.0.0"
-}
-```
-
-That's it. Drop the folder into `skills/`, restart the server, and the Skill appears in the UI automatically.
 
 ### Optional files
 
 | File | Purpose |
 |---|---|
-| `help.txt` | Help text shown by `/help my_skill` |
-| `request_urls.txt` | One URL per line — every external host the Skill contacts |
-| `requirements.txt` | Standard pip requirements file — installed automatically on import |
+| `help.txt` | Help text shown by `/help <skill>` |
+| `requirements.txt` | Python dependencies for the Skill |
+| `valves.json` | Saved settings written from the UI |
 
-### Skill rules
+### `skill.py`
 
-| Rule | Limit |
-|---|---|
-| Allowed libraries | Python standard library + packages listed in `requirements.txt` |
-| Folder size | ≤ 500 MB |
-| External requests | Only to URLs declared in `request_urls.txt` |
-| Embedded AI models | ≤ 0.5 M parameters |
+At minimum, implement these two functions:
 
-`request_urls.txt` is a transparency contract: users can always see exactly where a Skill phones home.
+```python
+def match(text: str) -> bool:
+    return "hello" in text.lower()
 
----
-
-## Skill Management
-
-Skills can be managed from the **Skills page** (`/skills`) or via the API:
-
-```bash
-# Export a skill as a ZIP
-GET /api/skills/<id>/export
-
-# Install or update a skill from a ZIP
-POST /api/skills/import   (multipart, field: file)
-
-# Delete a skill permanently
-DELETE /api/skills/<id>
-
-# Toggle enabled/disabled
-POST /api/skills/toggle   { "id": "calc" }
-
-# Update priority order
-POST /api/skills/reorder  { "order": ["greeting", "calc", "joke"] }
+def respond(text: str) -> str | None:
+    return "Hi there!"
 ```
 
+- `match()` decides whether the Skill should handle the input
+- `respond()` returns the response text
+- If `respond()` returns `None`, the Skill is skipped
+
+### `meta.json`
+
+`meta.json` defines the Skill's display metadata.
+
+```json
+{
+  "name": "My Skill",
+  "description": "What this Skill does",
+  "author": "your-name",
+  "version": "1.0.0"
+}
+```
+
+If you add `valves`, the Skills page will show editable fields for them.
+
+```json
+{
+  "name": "My Skill",
+  "description": "What this Skill does",
+  "author": "your-name",
+  "version": "1.0.0",
+  "valves": [
+    {
+      "key": "api_key",
+      "label": "API Key",
+      "type": "password",
+      "description": "Optional setting shown in the UI",
+      "default": ""
+    }
+  ]
+}
+```
+
+Common `valves` fields:
+
+| Field | Meaning |
+|---|---|
+| `key` | Storage key |
+| `label` | UI label |
+| `type` | `text`, `password`, or `number` |
+| `description` | Extra help text |
+| `default` | Default value |
+| `placeholder` | Input placeholder |
+
 ---
 
-## API Reference
+## Slash Commands
+
+- `/help`
+  - Shows the list of enabled Skills and a short summary
+- `/help <skill_id>`
+  - Shows the target Skill's `help.txt`
+
+---
+
+## API
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/` | Chat UI |
-| `GET` | `/skills` | Skill management page |
-| `POST` | `/api/chat` | `{ message, session_id }` → response + stats |
-| `POST` | `/api/chat/sse` | Same as above, but streamed as Server-Sent Events |
-| `POST` | `/api/chat/regenerate` | Re-run the bot on a given turn → new branch |
-| `POST` | `/api/chat/edit` | Edit a user message → new branch, truncates later turns |
-| `POST` | `/api/chat/switch_branch` | Switch the visible branch of a turn |
-| `GET` | `/api/sessions` | List all sessions |
+| `GET` | `/skills` | Skills management page |
+| `POST` | `/api/chat` | Normal send. Body: `{ message, session_id }` |
+| `POST` | `/api/chat/sse` | Send with SSE progress updates |
+| `POST` | `/api/chat/regenerate` | Regenerate a specific turn |
+| `POST` | `/api/chat/edit` | Edit a user message and resend |
+| `POST` | `/api/chat/switch_branch` | Switch the active branch for a turn |
+| `GET` | `/api/sessions` | List sessions |
 | `POST` | `/api/sessions` | Create a session |
-| `GET` | `/api/sessions/<id>` | Get session with active-path turns |
+| `GET` | `/api/sessions/<id>` | Get a session |
 | `DELETE` | `/api/sessions/<id>` | Delete a session |
 | `POST` | `/api/sessions/<id>/rename` | Rename a session |
-| `GET` | `/api/skills` | List skills in priority order |
-| `GET` | `/api/skills/<id>/export` | Download skill as `.zip` |
-| `POST` | `/api/skills/import` | Upload and install a skill ZIP |
-| `DELETE` | `/api/skills/<id>` | Delete a skill from disk |
-| `POST` | `/api/skills/toggle` | Enable or disable a skill |
-| `POST` | `/api/skills/reorder` | Update skill priority order |
+| `GET` | `/api/skills` | List Skills |
+| `GET` | `/api/skills/<id>/export` | Export a Skill as ZIP |
+| `POST` | `/api/skills/import` | Import a Skill ZIP |
+| `DELETE` | `/api/skills/<id>` | Delete a Skill |
+| `POST` | `/api/skills/toggle` | Enable or disable a Skill |
+| `POST` | `/api/skills/reorder` | Update Skill order |
+| `GET` | `/api/skills/<id>/help` | Fetch `help.txt` |
+| `GET` | `/api/skills/<id>/valves` | Fetch `valves` definitions and saved values |
+| `POST` | `/api/skills/<id>/valves` | Update saved `valves` values |
 | `GET` | `/api/settings` | Get app settings |
 | `POST` | `/api/settings` | Update app settings |
 
 ---
 
-## Configuration
+## Configuration Files
 
-**`skills/priority.json`** — managed automatically by the UI, but editable by hand:
+### `skills/priority.json`
+
+Stores Skill execution order and disabled Skills.
 
 ```json
 {
-  "order":    ["greeting", "calc", "wikipedia", "joke", "ddgs"],
+  "order": ["greeting", "wikipedia", "ddgs", "calc", "joke", "valves_test"],
   "disabled": []
 }
 ```
 
-**`settings.json`** — auto-generated on first run:
+### `settings.json`
+
+Stores app-wide settings. The current implementation uses `preload_skills`.
 
 ```json
 {
@@ -248,20 +316,17 @@ POST /api/skills/reorder  { "order": ["greeting", "calc", "joke"] }
 }
 ```
 
-`preload_skills: true` loads all enabled Skills into memory at startup, eliminating the cold-start delay on the first query.
+When `preload_skills` is `true`, Unai loads all enabled Skills at startup to reduce the delay before the first response.
 
 ---
 
-## Contributing
+## Development Notes
 
-Skills are the primary contribution surface. If you've built something useful:
-
-1. Make sure `meta.json` is filled out accurately
-2. List every external host in `request_urls.txt`
-3. Keep `skill.py` readable — it's the whole point
-4. Open a pull request
-
-Bug reports and ideas are welcome as issues.
+- `sessions.db` is SQLite
+- `priority.json` is updated from the Skills page
+- A Skill works even without `help.txt`
+- If `requirements.txt` is present during ZIP import, Unai installs its dependencies
+- The current implementation does not enforce external-host restrictions via `request_urls.txt`
 
 ---
 
