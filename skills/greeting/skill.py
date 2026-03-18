@@ -1,4 +1,4 @@
-"""Greeting & small talk skill using rule-based matching + Levenshtein distance"""
+﻿"""Greeting & small talk skill using rule-based matching + Levenshtein distance"""
 
 RULES = [
     (["hello", "hi", "hey", "yoo"],

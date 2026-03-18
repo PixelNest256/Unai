@@ -252,6 +252,7 @@ def switch_branch():
         "user_content": branch_result["branch"]["user"]["content"],
         "bot":          branch_result["branch"]["bot"],
     })
+
 # ─── Routes: sessions ────────────────────────────────────────────
 
 @app.route("/api/sessions", methods=["GET"])
@@ -292,7 +293,7 @@ def rename_session(session_id):
         return jsonify({"error": "not found"}), 404
     return jsonify({"ok": True, "title": title})
 
-# ─── Routes: skills ────────────────────────────────────────────── ──────────────────────────────────────────────
+# ─── Routes: skills ──────────────────────────────────────────────
 
 @app.route("/api/skills", methods=["GET"])
 def skills_list():
@@ -373,61 +374,51 @@ def export_skill(skill_id):
     )
 
 
-@app.route("/api/skills/import", methods=["POST"])
-def import_skill():
+def _install_zip_bytes(zip_bytes: bytes) -> dict:
     """
-    Import a skill from a ZIP upload.
-    Expects multipart/form-data with field 'file'.
-    The ZIP must contain a top-level directory whose name becomes the skill_id.
+    ZIP バイト列を受け取り、Skill としてインストールする共通ヘルパー。
+    戻り値: {"ok": True, "skill_id": ..., "updated": bool, "pip": ...}
+            または {"ok": False, "error": str}
     """
-    import zipfile, io
-    from unai_core import SKILLS_DIR
-
-    if "file" not in request.files:
-        return jsonify({"error": "no file"}), 400
-
-    f = request.files["file"]
-    if not f.filename.endswith(".zip"):
-        return jsonify({"error": "must be a .zip file"}), 400
+    import zipfile, io, subprocess, sys
 
     try:
-        zf = zipfile.ZipFile(io.BytesIO(f.read()))
+        zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
     except zipfile.BadZipFile:
-        return jsonify({"error": "invalid ZIP"}), 400
+        return {"ok": False, "error": "invalid ZIP"}
 
     names = zf.namelist()
     if not names:
-        return jsonify({"error": "empty ZIP"}), 400
+        return {"ok": False, "error": "empty ZIP"}
 
-    # Derive skill_id from the top-level directory in the ZIP
+    # トップレベルディレクトリ名が skill_id になる
     top_dirs = {n.split("/")[0] for n in names if n.split("/")[0]}
     if len(top_dirs) != 1:
-        return jsonify({"error": "ZIP must contain exactly one top-level folder"}), 400
+        return {"ok": False, "error": "ZIP must contain exactly one top-level folder"}
 
     skill_id = top_dirs.pop()
 
-    # Validate: must contain skill.py and meta.json at the root level
+    # skill.py と meta.json の存在確認
     required = {f"{skill_id}/skill.py", f"{skill_id}/meta.json"}
     present  = set(names)
     missing  = required - present
     if missing:
-        return jsonify({"error": f"ZIP is missing required files: {', '.join(missing)}"}), 400
+        return {"ok": False, "error": f"ZIP is missing required files: {', '.join(missing)}"}
 
-    # Security: reject path traversal
+    # パストラバーサル対策
     for name in names:
         if ".." in name or name.startswith("/"):
-            return jsonify({"error": "unsafe path in ZIP"}), 400
+            return {"ok": False, "error": "unsafe path in ZIP"}
 
-    dest_dir = os.path.join(SKILLS_DIR, skill_id)
+    dest_dir       = os.path.join(SKILLS_DIR, skill_id)
     already_exists = os.path.isdir(dest_dir)
 
     zf.extractall(SKILLS_DIR)
 
-    # Install dependencies from requirements.txt if present
-    req_key  = f"{skill_id}/requirements.txt"
+    # requirements.txt があれば pip install
+    req_key    = f"{skill_id}/requirements.txt"
     pip_result = None
     if req_key in present:
-        import subprocess, sys
         req_path = os.path.join(SKILLS_DIR, skill_id, "requirements.txt")
         try:
             proc = subprocess.run(
@@ -436,7 +427,7 @@ def import_skill():
                 capture_output=True, text=True, timeout=120
             )
             if proc.returncode == 0:
-                pip_result = {"ok": True, "output": proc.stdout.strip()}
+                pip_result = {"ok": True,  "output": proc.stdout.strip()}
             else:
                 pip_result = {"ok": False, "output": (proc.stderr or proc.stdout).strip()}
         except subprocess.TimeoutExpired:
@@ -444,7 +435,7 @@ def import_skill():
         except Exception as e:
             pip_result = {"ok": False, "output": str(e)}
 
-    # Refresh skill cache
+    # スキルキャッシュを更新
     invalidate_skill_cache(skill_id)
     priority = load_priority()
     if skill_id not in priority.get("order", []):
@@ -452,12 +443,86 @@ def import_skill():
         save_priority(priority)
     warm_skill_cache()
 
-    return jsonify({
+    return {
         "ok":       True,
         "skill_id": skill_id,
         "updated":  already_exists,
-        "pip":      pip_result,   # None if no requirements.txt
-    })
+        "pip":      pip_result,
+    }
+
+
+@app.route("/api/skills/import", methods=["POST"])
+def import_skill():
+    """
+    Import a skill from a ZIP upload.
+    Expects multipart/form-data with field 'file'.
+    The ZIP must contain a top-level directory whose name becomes the skill_id.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "no file"}), 400
+
+    f = request.files["file"]
+    if not f.filename.endswith(".zip"):
+        return jsonify({"error": "must be a .zip file"}), 400
+
+    result = _install_zip_bytes(f.read())
+    if not result["ok"]:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.route("/api/skills/install-from-url", methods=["POST", "OPTIONS"])
+def install_skill_from_url():
+    """
+    公式サイトの「Install」ボタンから呼び出されるエンドポイント。
+    Body: { "url": "<Skill ZIP の直リンク URL>" }
+
+    公式サイト（外部ドメイン）からの fetch() に対応するため CORS ヘッダーを付与する。
+    許可するオリジンは app.config["ALLOWED_INSTALL_ORIGIN"] で制御する（デフォルト: "*"）。
+    本番では "https://your-official-site.example" のように具体的なオリジンを設定すること。
+    """
+    import urllib.request as _urlreq
+
+    # ── CORS ヘッダーを付与するヘルパー ──
+    def _cors(response):
+        origin  = request.headers.get("Origin", "")
+        allowed = app.config.get("ALLOWED_INSTALL_ORIGIN", "*")
+        if allowed == "*" or origin == allowed:
+            response.headers["Access-Control-Allow-Origin"]  = allowed if allowed != "*" else "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Vary"] = "Origin"
+        return response
+
+    # Preflight（OPTIONS）リクエストへの応答
+    if request.method == "OPTIONS":
+        return _cors(app.make_response(("", 204)))
+
+    data = request.get_json(silent=True) or {}
+    url  = (data.get("url") or "").strip()
+
+    if not url:
+        return _cors(jsonify({"ok": False, "error": "url is required"})), 400
+
+    # https / http のみ許可（file:// などを弾く）
+    if not url.startswith(("https://", "http://")):
+        return _cors(jsonify({"ok": False, "error": "url must start with https:// or http://"})), 400
+
+    # ZIP をダウンロード（タイムアウト 30 秒、最大 50 MB）
+    MAX_BYTES = 50 * 1024 * 1024
+    try:
+        req = _urlreq.Request(url, headers={"User-Agent": "Unai-Client/1.0"})
+        with _urlreq.urlopen(req, timeout=30) as resp:
+            zip_bytes = resp.read(MAX_BYTES + 1)
+    except Exception as e:
+        return _cors(jsonify({"ok": False, "error": f"download failed: {e}"})), 502
+
+    if len(zip_bytes) > MAX_BYTES:
+        return _cors(jsonify({"ok": False, "error": "ZIP exceeds 50 MB limit"})), 413
+
+    result = _install_zip_bytes(zip_bytes)
+    status = 200 if result["ok"] else 400
+    return _cors(jsonify(result)), status
 
 
 @app.route("/api/skills/<skill_id>", methods=["DELETE"])
@@ -520,6 +585,7 @@ def get_skill_help(skill_id):
     if not os.path.isdir(skill_dir):
         return jsonify({"error": "skill not found"}), 404
     return jsonify({"help": load_help(skill_id)})
+
 # ─── Entry point ─────────────────────────────────────────────────
 
 if __name__ == "__main__":
