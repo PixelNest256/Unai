@@ -1,6 +1,9 @@
 # Ignore unai-package directory
 unai-package/
 
+#Ignore unai-website directory
+unai-website/
+
 # Documents used only on development
 unai.md
 Unai開発メモ.txt
