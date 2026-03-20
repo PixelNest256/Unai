@@ -55,3 +55,8 @@ sessions.db
 
 # Settings file
 settings.json
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
