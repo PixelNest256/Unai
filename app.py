@@ -597,4 +597,4 @@ if __name__ == "__main__":
     else:
         print("Unai Web UI starting at http://localhost:5000")
         print("  Skill preloading disabled")
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=5000, use_reloader=False, use_debugger=False)
