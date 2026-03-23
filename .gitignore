@@ -60,3 +60,7 @@ settings.json
 .env
 .env.*
 !.env.example
+
+# Deprecated batch scripts
+setup_venv.bat
+run.bat

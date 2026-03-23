@@ -51,14 +51,14 @@ Dependencies are listed in `requirements.txt`.
 ```bat
 git clone https://github.com/PixelNest256/Unai.git
 cd unai
-setup_venv.bat
-run.bat
+start.bat
 ```
 
-`setup_venv.bat` creates `.venv` and installs dependencies.
-`run.bat` starts the app.
+`start.bat` creates the virtual environment (if needed), installs dependencies, and starts the app in one step.
 
-`setup_venv.bat` is tied to the author's local Python path, so if that path does not exist on your machine, use one of the manual setup methods below or adjust the batch file.
+The script automatically detects pyenv Python 3.12.0 or falls back to the system Python.
+
+> **Note:** The old `setup_venv.bat` and `run.bat` scripts are deprecated. Use `start.bat` instead.
 
 ### 2. Windows: manual setup and run
 
