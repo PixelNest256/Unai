@@ -1,7 +1,5 @@
 ![Banner](banner.svg)
 
-# Unai
-
 Unai is a chat application that builds responses from Python `Skill`s instead of using an LLM.
 When a message arrives, Unai tries each Skill in the order defined by `priority.json`, calls the first Skill whose `match()` returns `True`, and then runs that Skill's `respond()` function.
 If nothing matches, Unai returns a fixed fallback message.
