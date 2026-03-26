@@ -1,4 +1,4 @@
-<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+<svg width="1200" height="300" viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
   <!-- Background with grid pattern similar to hero-grid -->
   <defs>
     <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
@@ -11,14 +11,14 @@
   </defs>
   
   <!-- Background -->
-  <rect width="1200" height="400" fill="url(#bgGradient)"/>
-  <rect width="1200" height="400" fill="url(#grid)"/>
+  <rect width="1200" height="300" fill="url(#bgGradient)"/>
+  <rect width="1200" height="300" fill="url(#grid)"/>
   
   <!-- Watermark text "u/" similar to hero-watermark -->
-  <text x="600" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="480" font-weight="800" fill="#46464a" text-anchor="middle" opacity="0.7" filter="blur(12px)">u/</text>
+  <text x="600" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="480" font-weight="800" fill="#46464a" text-anchor="middle" opacity="0.7" filter="blur(12px)">u/</text>
   
   <!-- Main content container -->
-  <g transform="translate(100, 80)">
+  <g transform="translate(100, 40)">
     
     <!-- Title "Unai" -->
     <text x="0" y="60" font-family="'Syne', sans-serif" font-size="96" font-weight="800" fill="#f0f0f0" letter-spacing="-2">Unai</text>
@@ -70,7 +70,7 @@
   </g>
   
   <!-- Decorative elements -->
-  <circle cx="1100" cy="100" r="40" fill="#7fff6e" opacity="0.1"/>
-  <circle cx="1050" cy="150" r="25" fill="#7fff6e" opacity="0.1"/>
-  <circle cx="1150" cy="180" r="15" fill="#7fff6e" opacity="0.1"/>
+  <circle cx="1100" cy="80" r="30" fill="#7fff6e" opacity="0.1"/>
+  <circle cx="1060" cy="120" r="20" fill="#7fff6e" opacity="0.1"/>
+  <circle cx="1140" cy="140" r="12" fill="#7fff6e" opacity="0.1"/>
 </svg>
