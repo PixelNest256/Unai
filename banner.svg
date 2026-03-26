@@ -1,0 +1,76 @@
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with grid pattern similar to hero-grid -->
+  <defs>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#525257" stroke-width="1" opacity="0.12"/>
+    </pattern>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#212121;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2d2d30;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="400" fill="url(#bgGradient)"/>
+  <rect width="1200" height="400" fill="url(#grid)"/>
+  
+  <!-- Watermark text "u/" similar to hero-watermark -->
+  <text x="600" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="480" font-weight="800" fill="#46464a" text-anchor="middle" opacity="0.7" filter="blur(12px)">u/</text>
+  
+  <!-- Main content container -->
+  <g transform="translate(100, 80)">
+    
+    <!-- Title "Unai" -->
+    <text x="0" y="60" font-family="'Syne', sans-serif" font-size="96" font-weight="800" fill="#f0f0f0" letter-spacing="-2">Unai</text>
+    
+    <!-- Tagline -->
+    <text x="0" y="90" font-family="'Syne', sans-serif" font-size="18" font-weight="400" fill="#a0a0aa" letter-spacing="3.6">YOUR NON-AI ASSISTANT</text>
+    
+    <!-- Description -->
+    <text x="0" y="130" font-family="'JetBrains Mono', monospace" font-size="20" fill="#d4d4dc">
+      A chat assistant that uses
+    </text>
+    <text x="0" y="155" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="600" fill="#7fff6e">
+      zero LLMs.
+    </text>
+    <text x="140" y="155" font-family="'JetBrains Mono', monospace" font-size="20" fill="#d4d4dc">
+      Fast, cheap, and honest.
+    </text>
+    
+    <!-- Feature icons and text -->
+    <g transform="translate(0, 200)">
+      <!-- No LLM feature -->
+      <g transform="translate(0, 0)">
+        <circle cx="12" cy="12" r="20" fill="#2d2d30" stroke="#525257" stroke-width="1"/>
+        <text x="12" y="18" font-size="20" text-anchor="middle">⚡</text>
+        <text x="45" y="18" font-family="'Syne', sans-serif" font-size="16" font-weight="600" fill="#f0f0f0">No LLM</text>
+      </g>
+      
+      <!-- Skill-based feature -->
+      <g transform="translate(150, 0)">
+        <circle cx="12" cy="12" r="20" fill="#2d2d30" stroke="#525257" stroke-width="1"/>
+        <text x="12" y="18" font-size="20" text-anchor="middle">🔧</text>
+        <text x="45" y="18" font-family="'Syne', sans-serif" font-size="16" font-weight="600" fill="#f0f0f0">Skill-based</text>
+      </g>
+      
+      <!-- Community feature -->
+      <g transform="translate(320, 0)">
+        <circle cx="12" cy="12" r="20" fill="#2d2d30" stroke="#525257" stroke-width="1"/>
+        <text x="12" y="18" font-size="20" text-anchor="middle">🌍</text>
+        <text x="45" y="18" font-family="'Syne', sans-serif" font-size="16" font-weight="600" fill="#f0f0f0">Community</text>
+      </g>
+      
+      <!-- Honest feature -->
+      <g transform="translate(480, 0)">
+        <circle cx="12" cy="12" r="20" fill="#2d2d30" stroke="#525257" stroke-width="1"/>
+        <text x="12" y="18" font-size="20" text-anchor="middle">🔍</text>
+        <text x="45" y="18" font-family="'Syne', sans-serif" font-size="16" font-weight="600" fill="#f0f0f0">Honest</text>
+      </g>
+    </g>
+  </g>
+  
+  <!-- Decorative elements -->
+  <circle cx="1100" cy="100" r="40" fill="#7fff6e" opacity="0.1"/>
+  <circle cx="1050" cy="150" r="25" fill="#7fff6e" opacity="0.1"/>
+  <circle cx="1150" cy="180" r="15" fill="#7fff6e" opacity="0.1"/>
+</svg>
