@@ -16,6 +16,7 @@ If nothing matches, Unai returns a fixed fallback message.
   - Edit a user message to truncate later turns and create a new branch
   - Switch between branches
 - SSE-based progress updates while a Skill is being selected
+- Early response selection: Select skill responses as soon as they're ready, even while other skills are still generating
 - Response metadata: token count, elapsed time, and tokens/sec
 - Skills management page
   - Reorder Skills
@@ -129,8 +130,9 @@ unai/
     ├── greeting/
     ├── calc/
     ├── wikipedia/
-    ├── joke/
     ├── ddgs/
+    ├── ddgs_chatbot/
+    ├── joke/
     └── valves_test/
 ```
 
@@ -142,10 +144,11 @@ unai/
 |---|---|---|
 | `greeting` | Greetings and small talk | Rule-based matching with Levenshtein distance for near-matches |
 | `calc` | Calculation | Safe AST-based evaluation; `expand`, `factor`, and `solve` use SymPy |
-| `wikipedia` | Wikipedia summaries | Uses the English Wikipedia summary API |
+| `wikipedia` | Wikipedia summaries | Uses English Wikipedia summary API |
 | `ddgs` | Search summaries | Summarizes the first DuckDuckGo search result |
+| `ddgs_chatbot` | Conversational search | Interactive chat-based search with DuckDuckGo |
 | `joke` | Random jokes | Returns a random joke from a predefined list |
-| `valves_test` | Development sample | Displays the saved `valves` values for the Skill |
+| `valves_test` | Development sample | Displays saved `valves` values for Skill |
 
 ---
 
@@ -299,7 +302,7 @@ Stores Skill execution order and disabled Skills.
 
 ```json
 {
-  "order": ["greeting", "wikipedia", "ddgs", "calc", "joke", "valves_test"],
+  "order": ["greeting", "wikipedia", "ddgs", "ddgs_chatbot", "calc", "joke", "valves_test"],
   "disabled": []
 }
 ```
