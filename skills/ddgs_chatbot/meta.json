@@ -1,0 +1,40 @@
+{
+  "name": "DDGS Chatbot",
+  "description": "Extracts specific answer sentences from DuckDuckGo search results using intelligent filtering",
+  "author": "Kasam",
+  "version": "1.0.0",
+  "valves": [
+    {
+      "key": "max_results",
+      "label": "Max Search Results",
+      "type": "number",
+      "description": "Maximum number of search results to process",
+      "default": 8,
+      "placeholder": "8"
+    },
+    {
+      "key": "exclude_questions",
+      "label": "Exclude Questions",
+      "type": "text",
+      "description": "Exclude sentences that end with question marks (true/false)",
+      "default": "true",
+      "placeholder": "true"
+    },
+    {
+      "key": "exclude_query_match",
+      "label": "Exclude Query Matches",
+      "type": "text",
+      "description": "Exclude sentences that contain the original query (true/false)",
+      "default": "true",
+      "placeholder": "true"
+    },
+    {
+      "key": "min_sentence_length",
+      "label": "Min Sentence Length",
+      "type": "number",
+      "description": "Minimum sentence length (0 to disable)",
+      "default": 40,
+      "placeholder": "40"
+    }
+  ]
+}

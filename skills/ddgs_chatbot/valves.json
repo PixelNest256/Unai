@@ -1,0 +1,6 @@
+{
+  "max_results": "4",
+  "exclude_questions": "true",
+  "exclude_query_match": "true",
+  "min_sentence_length": "20"
+}

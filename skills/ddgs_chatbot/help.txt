@@ -1,0 +1,22 @@
+DDGS Chatbot Skill
+
+This skill extracts specific answer sentences from DuckDuckGo search results using intelligent filtering.
+
+Usage examples:
+- "answer what is python programming"
+- "find answer for how does photosynthesis work"
+- "ddgs chatbot what are the benefits of meditation"
+- "tell me answer why is the sky blue"
+
+Features:
+- Searches DuckDuckGo for relevant information
+- Extracts individual sentences from search results
+- Filters out questions and query matches
+- Configurable minimum sentence length
+- Valve-controlled filtering options
+
+Valves:
+- Max Search Results: How many search results to process (default: 8)
+- Exclude Questions: Remove sentences ending with question marks (default: true)
+- Exclude Query Matches: Remove sentences containing your original query (default: true)
+- Min Sentence Length: Minimum length for valid sentences (default: 40, 0 to disable)
