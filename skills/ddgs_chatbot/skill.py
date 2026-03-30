@@ -1,18 +1,6 @@
 """DDGS Chatbot skill - Extracts specific answer sentences from DuckDuckGo search results"""
 import re
-import os
-import sys
 from ddgs import DDGS
-
-# Allow importing unai_core regardless of working directory
-_SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
-_UNAI_DIR  = os.path.dirname(os.path.dirname(_SKILL_DIR))
-if _UNAI_DIR not in sys.path:
-    sys.path.insert(0, _UNAI_DIR)
-
-from unai_core import load_valves
-
-SKILL_ID = "ddgs_chatbot"
 
 def match(text: str) -> bool:
     """Return True if this Skill should handle the input."""
@@ -85,7 +73,7 @@ def respond(text: str) -> str:
         return None
     
     # Load valve settings with proper type conversion
-    valves = load_valves(SKILL_ID)
+    valves = load_valves()
     try:
         max_results = int(valves.get("max_results", 8))
     except (ValueError, TypeError):

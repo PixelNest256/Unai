@@ -66,6 +66,11 @@ def load_skill(skill_name: str):
         return None
     spec = importlib.util.spec_from_file_location(skill_name, skill_path)
     mod  = importlib.util.module_from_spec(spec)
+    
+    # Inject unai_core functions into the skill module
+    mod.load_valves = lambda: load_valves(skill_name)
+    mod.get_valve_definitions = lambda: get_valve_definitions(skill_name)
+    
     spec.loader.exec_module(mod)
     _skill_cache[skill_name] = mod
     return mod
