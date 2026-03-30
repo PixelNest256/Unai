@@ -105,6 +105,17 @@ def respond(text: str) -> str:
             if not body:
                 continue
             
+            # Normalize text spacing
+            # 1. Add space at camelCase boundaries (aB -> a B, 5B -> 5 B)
+            body = re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', body)
+            # 2. Add space between letter and number (a5 -> a 5)
+            body = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', body)
+            # 3. Add space after punctuation
+            body = re.sub(r'([,!?])([^ \n])', r'\1 \2', body)
+            body = re.sub(r'(\.)([^ \n\d])', r'\1 \2', body)
+            # 4. Normalize whitespace
+            body = re.sub(r"\s+", " ", body).strip()
+            
             sentence = extract_answer_sentence(body, keyword, valves)
             if sentence:
                 return sentence
