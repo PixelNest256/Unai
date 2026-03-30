@@ -1,4 +1,4 @@
-/* ── DOM refs ─────────────────────────────────── */
+﻿/* ── DOM refs ─────────────────────────────────── */
 const chatEl = document.getElementById('chat');
 const emptyEl = document.getElementById('empty-state');
 const inputAreaEl = document.getElementById('input-area');
@@ -241,6 +241,10 @@ function startRenameInline(sessionId, itemEl, currentTitle) {
 }
 
 async function deleteSession(id) {
+  if (id === currentSessionId) {
+    const picker = chatEl.querySelector('.candidate-picker');
+    if (picker && picker._autoResolve) picker._autoResolve();
+  }
   await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
   if (id === currentSessionId) {
     currentSessionId = null;
@@ -253,6 +257,8 @@ async function deleteSession(id) {
 
 /* ── Load session ─────────────────────────────── */
 async function loadSession(id) {
+  const picker = chatEl.querySelector('.candidate-picker');
+  if (picker && picker._autoResolve) picker._autoResolve();
   try {
     const res = await fetch(`/api/sessions/${id}`);
     const sess = await res.json();
@@ -278,6 +284,8 @@ async function loadSession(id) {
 /* ── New chat ─────────────────────────────────── */
 newChatBtn.addEventListener('click', () => {
   if (!currentSessionId) return;
+  const picker = chatEl.querySelector('.candidate-picker');
+  if (picker && picker._autoResolve) picker._autoResolve();
   currentSessionId = null;
   clearChat();
   headerTitle.textContent = 'New Chat';  // ← タイトルをリセット
@@ -296,18 +304,25 @@ function clearChat(showLanding = true) {
    branch = { id, user:{content,ts}, bot:{content,skill,...} }
 ══════════════════════════════════════════════════ */
 
-function renderTurn(turnData, stream = false) {
+function renderTurn(turnData, stream = false, skipUser = false) {
   const { turn_id, branch, branch_index, branch_count } = turnData;
 
   // ── user message ──
-  const userMsg = document.createElement('div');
-  userMsg.className = 'msg user';
-  userMsg.dataset.turnId = turn_id;
-  const userBubble = document.createElement('div');
-  userBubble.className = 'bubble';
-  userBubble.textContent = branch.user.content;
-  userMsg.appendChild(userBubble);
-  chatEl.appendChild(userMsg);
+  let userBubble;
+  if (!skipUser) {
+    const userMsg = document.createElement('div');
+    userMsg.className = 'msg user';
+    userMsg.dataset.turnId = turn_id;
+    userBubble = document.createElement('div');
+    userBubble.className = 'bubble';
+    userBubble.textContent = branch.user.content;
+    userMsg.appendChild(userBubble);
+    chatEl.appendChild(userMsg);
+  } else {
+    // Find the most recent user message (should be the one we just created)
+    const userMessages = chatEl.querySelectorAll('.msg.user');
+    userBubble = userMessages.length > 0 ? userMessages[userMessages.length - 1].querySelector('.bubble') : null;
+  }
 
   // ── bot message ──
   const botMsg = document.createElement('div');
@@ -586,7 +601,6 @@ async function send() {
   const text = inputEl().value.trim();
   if (!text || isWaiting) return;
 
-  // Lazily create a session on the very first message
   let isNewSession = false;
   if (!currentSessionId) {
     try {
@@ -605,21 +619,24 @@ async function send() {
   inputEl().style.height = 'auto';
   sendBtn().classList.remove('active');
 
+  // Show user bubble immediately (kept permanently)
+  const userMsgEl = document.createElement('div');
+  userMsgEl.className = 'msg user';
+  const userBubbleEl = document.createElement('div');
+  userBubbleEl.className = 'bubble';
+  userBubbleEl.textContent = text;
+  userMsgEl.appendChild(userBubbleEl);
+  chatEl.appendChild(userMsgEl);
 
-  // Show user bubble immediately
-  const userPreviewEl = document.createElement('div');
-  userPreviewEl.className = 'msg user';
-  const _upb = document.createElement('div');
-  _upb.className = 'bubble';
-  _upb.textContent = text;
-  userPreviewEl.appendChild(_upb);
-  chatEl.appendChild(userPreviewEl);
-
-  // Skill progress indicator (replaces old typing dots)
+  // Progress spinner (removed once matched_skills arrives)
   const { wrap: progressWrap, inner: progressInner } = createProgressEl();
+  progressInner.textContent = 'matching skills\u2026';
   scrollBottom();
 
-  let finalData = null;
+  let pickerEl = null;
+  let candidates = [];
+  let sseOutcome = null;
+  let committedData = null;
   const sendTime = performance.now();
 
   try {
@@ -628,10 +645,8 @@ async function send() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text, session_id: currentSessionId || '' }),
     });
-
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    // Read SSE stream
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
@@ -641,15 +656,71 @@ async function send() {
       if (done) break;
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
-      buf = lines.pop(); // keep incomplete line
+      buf = lines.pop();
+
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const event = JSON.parse(line.slice(6));
-        if (event.phase === 'matching' || event.phase === 'responding') {
-          setProgress(progressInner, event.phase, event.skill);
-        } else if (event.phase === 'done' || event.phase === 'no_match') {
-          finalData = event;
-          if (finalData) finalData.wallMs = Math.round(performance.now() - sendTime);
+
+        if (event.phase === 'matched_skills') {
+          progressWrap.remove();
+          if (event.skills.length > 1) {
+            pickerEl = buildCandidatePickerSkeleton(event.skills);
+            chatEl.appendChild(pickerEl);
+            scrollBottom();
+          }
+
+        } else if (event.phase === 'candidate') {
+          const cand = { ...event };
+          delete cand.phase;
+          cand.wallMs = Math.round(performance.now() - sendTime);
+          candidates.push(cand);
+          if (pickerEl) {
+            // Setup early selection if this is the first candidate
+            if (candidates.length === 1) {
+              setupEarlySelection(pickerEl, candidates, async (result) => {
+                pickerEl.remove();
+                try {
+                  await fetch('/api/chat/commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: currentSessionId, message: text, result }),
+                  });
+                } catch { /* non-fatal */ }
+                try {
+                  const sr = await fetch(`/api/sessions/${currentSessionId}`);
+                  const sess = await sr.json();
+                  const lastTurn = sess.turns[sess.turns.length - 1];
+                  if (lastTurn && lastTurn.branch.user.content === text) {
+                    renderTurn(lastTurn, toggleStreaming.checked, true);
+                  } else {
+                    appendMsgFallback('bot', result.response, result);
+                  }
+                  if (isNewSession && sess.title) headerTitle.textContent = sess.title;
+                  loadSessionList();
+                } catch {
+                  appendMsgFallback('bot', result.response, result);
+                }
+                isWaiting = false;
+                inputElChat.focus();
+              });
+            }
+            fillCandidateCard(pickerEl, cand, candidates, pickerEl._onResolve);
+          }
+
+        } else if (event.phase === 'committed') {
+          committedData = { ...event };
+          delete committedData.phase;
+          committedData.wallMs = Math.round(performance.now() - sendTime);
+          sseOutcome = 'committed';
+          break outer;
+
+        } else if (event.phase === 'pick') {
+          sseOutcome = 'pick';
+          break outer;
+
+        } else if (event.phase === 'no_match') {
+          sseOutcome = 'no_match';
           break outer;
         }
       }
@@ -657,7 +728,8 @@ async function send() {
 
   } catch (err) {
     progressWrap.remove();
-    userPreviewEl.remove();
+    if (pickerEl) pickerEl.remove();
+    userMsgEl.remove();
     console.error('SSE error:', err);
     appendMsgFallback('bot', `Error: ${err.message || 'Unknown error occurred'}`);
     isWaiting = false;
@@ -665,41 +737,295 @@ async function send() {
     return;
   }
 
-  progressWrap.remove();
-  userPreviewEl.remove();
+  progressWrap.remove(); // idempotent
 
-  // Fetch the session to get the proper turn_id
-  // ただし no_match のときはサーバー側でターンが保存されているので
-  // 通常ルートと同じく sess.turns から取得する
+  if (sseOutcome === 'pick') {
+    // Check if early selection was disabled
+    if (pickerEl && pickerEl._earlySelectionDisabled) {
+      // Fall back to normal activation
+      activateCandidatePicker(pickerEl, candidates, async (result) => {
+        pickerEl.remove();
+        try {
+          await fetch('/api/chat/commit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: currentSessionId, message: text, result }),
+          });
+        } catch { /* non-fatal */ }
+        try {
+          const sr = await fetch(`/api/sessions/${currentSessionId}`);
+          const sess = await sr.json();
+          const lastTurn = sess.turns[sess.turns.length - 1];
+          if (lastTurn && lastTurn.branch.user.content === text) {
+            renderTurn(lastTurn, toggleStreaming.checked, true);
+          } else {
+            appendMsgFallback('bot', result.response, result);
+          }
+          if (isNewSession && sess.title) headerTitle.textContent = sess.title;
+          loadSessionList();
+        } catch {
+          appendMsgFallback('bot', result.response, result);
+        }
+        isWaiting = false;
+        inputElChat.focus();
+      });
+    } else if (pickerEl && !pickerEl._earlySelectionDisabled) {
+      // Early selection is still active, update the UI to show all responses are ready
+      const label = pickerEl.querySelector('.candidate-picker-label');
+      if (label) label.textContent = `${candidates.length} skills matched \u2014 pick the best response:`;
+
+      const dismissBtn = pickerEl.querySelector('.btn-candidate-dismiss');
+      if (dismissBtn) {
+        dismissBtn.textContent = 'Use default';
+        dismissBtn.title = "Use the highest-priority skill's response";
+        dismissBtn.onclick = () => {
+          if (pickerEl._onResolve) pickerEl._onResolve(null);
+        };
+      }
+
+      const hint = pickerEl.querySelector('.candidate-hint');
+      if (hint) hint.textContent = 'All responses ready';
+    }
+    return; // isWaiting cleared by callback above
+  }
+
+  if (sseOutcome === 'no_match') {
+    if (pickerEl) pickerEl.remove();
+    try {
+      const sr = await fetch(`/api/sessions/${currentSessionId}`);
+      const sess = await sr.json();
+      const lastTurn = sess.turns[sess.turns.length - 1];
+      if (lastTurn && lastTurn.branch.user.content === text) {
+        renderTurn(lastTurn, toggleStreaming.checked, true);
+      } else {
+        appendMsgFallback('bot', 'Sorry, there is no corresponding Skill for that question.');
+      }
+      if (isNewSession && sess.title) headerTitle.textContent = sess.title;
+      loadSessionList();
+    } catch {
+      appendMsgFallback('bot', 'Sorry, there is no corresponding Skill for that question.');
+    }
+    isWaiting = false;
+    inputElChat.focus();
+    return;
+  }
+
+  // sseOutcome === 'committed'
   try {
     const sr = await fetch(`/api/sessions/${currentSessionId}`);
     const sess = await sr.json();
     const lastTurn = sess.turns[sess.turns.length - 1];
-
-    // lastTurn のユーザー入力が今回の text と一致する場合のみ使う
-    // 一致しない = 保存に失敗した or 別のターンが末尾 → フォールバック描画
-    const lastUserContent = lastTurn?.branch?.user?.content;
-    if (lastTurn && lastUserContent === text) {
-      renderTurn(lastTurn, toggleStreaming.checked);
+    if (lastTurn && lastTurn.branch.user.content === text) {
+      renderTurn(lastTurn, toggleStreaming.checked, true);
     } else {
-      const resp = finalData && finalData.response ? finalData.response : 'No response.';
-      appendMsgFallback('user', text);
-      appendMsgFallback('bot', resp, finalData);
+      appendMsgFallback('bot', committedData?.response ?? 'No response.', committedData);
     }
-
     if (isNewSession && sess.title) headerTitle.textContent = sess.title;
     loadSessionList();
-
   } catch (err) {
     console.error('Session fetch error:', err);
-    const resp = finalData && finalData.response ? finalData.response : 'Error';
-    appendMsgFallback('user', text);
-    appendMsgFallback('bot', resp);
+    appendMsgFallback('bot', committedData?.response ?? 'Error', committedData);
   }
 
   isWaiting = false;
   inputElChat.focus();
 }
+
+/* ══════════════════════════════════════════════════
+   CANDIDATE PICKER  (multi-match UI)
+   Phase 1 – buildCandidatePickerSkeleton(skillNames)
+     Creates the wrapper + a "loading" card per skill immediately
+     after all match() calls complete.
+   Phase 2 – fillCandidateCard(pickerEl, candidate)
+     Replaces the loading skeleton for a skill as each respond() finishes.
+   Phase 3 – activateCandidatePicker(pickerEl, candidates, onResolve)
+     Wires up confirm/dismiss buttons once all candidates have arrived.
+   onResolve(chosen) receives the selected candidate object.
+══════════════════════════════════════════════════ */
+
+function buildCandidatePickerSkeleton(skillNames) {
+  const wrap = document.createElement('div');
+  wrap.className = 'candidate-picker';
+  wrap._skillNames = skillNames;
+
+  const label = document.createElement('div');
+  label.className = 'candidate-picker-label';
+  label.textContent = `${skillNames.length} skills matched \u2014 generating responses\u2026`;
+  wrap.appendChild(label);
+
+  const cardsRow = document.createElement('div');
+  cardsRow.className = 'candidate-cards';
+  wrap._cardsRow = cardsRow;
+
+  skillNames.forEach((name) => {
+    const card = document.createElement('div');
+    card.className = 'candidate-card loading';
+    card.dataset.skill = name;
+
+    const header = document.createElement('div');
+    header.className = 'candidate-card-header';
+    const badge = document.createElement('span');
+    badge.className = 'candidate-skill-badge';
+    badge.textContent = name;
+    header.appendChild(badge);
+    card.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'candidate-card-body';
+    const ind = document.createElement('div');
+    ind.className = 'typing-indicator';
+    ind.innerHTML = '<span></span><span></span><span></span>';
+    body.appendChild(ind);
+    card.appendChild(body);
+
+    const meta = document.createElement('div');
+    meta.className = 'candidate-card-meta';
+    meta.textContent = '\u2014';
+    card.appendChild(meta);
+
+    cardsRow.appendChild(card);
+  });
+
+  wrap.appendChild(cardsRow);
+
+  const actionsRow = document.createElement('div');
+  actionsRow.className = 'candidate-actions';
+  actionsRow.innerHTML =
+    '<button class="btn-candidate-select" disabled>Use selected</button>' +
+    '<button class="btn-candidate-dismiss" disabled>Use default</button>' +
+    '<span class="candidate-hint">Generating responses\u2026</span>';
+  wrap._actionsRow = actionsRow;
+  wrap.appendChild(actionsRow);
+
+  wrap._autoResolve = null;
+
+  return wrap;
+}
+
+function setupEarlySelection(pickerEl, candidates, onResolve) {
+  let resolved = false;
+  pickerEl._onResolve = onResolve;
+  pickerEl._selectedIndex = 0;
+
+  function resolve(chosen) {
+    if (resolved) return;
+    resolved = true;
+    onResolve(chosen ?? candidates[0]);
+  }
+
+  const actionsRow = pickerEl._actionsRow;
+  actionsRow.innerHTML = '';
+
+  const selectBtn = document.createElement('button');
+  selectBtn.className = 'btn-candidate-select';
+  selectBtn.textContent = 'Use selected response';
+  selectBtn.disabled = true; // Enable only when a card is selected
+  selectBtn.addEventListener('click', () => {
+    const selectedCandidate = candidates[pickerEl._selectedIndex] || candidates[0];
+    resolve(selectedCandidate);
+  });
+  actionsRow.appendChild(selectBtn);
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.className = 'btn-candidate-dismiss';
+  dismissBtn.textContent = 'Wait for all responses';
+  dismissBtn.title = "Wait for all skills to finish generating";
+  dismissBtn.addEventListener('click', () => {
+    // Don't resolve yet, let the normal flow continue
+    pickerEl._earlySelectionDisabled = true;
+  });
+  actionsRow.appendChild(dismissBtn);
+
+  const hint = document.createElement('span');
+  hint.className = 'candidate-hint';
+  hint.textContent = 'Select a response as soon as it\'s ready';
+  actionsRow.appendChild(hint);
+
+  pickerEl._autoResolve = () => resolve(null);
+}
+
+function fillCandidateCard(pickerEl, candidate, allCandidates, onResolve) {
+  const card = pickerEl._cardsRow.querySelector(`[data-skill="${candidate.skill}"]`);
+  if (!card) return;
+  card.classList.remove('loading');
+  card.classList.add('selectable');
+
+  const body = card.querySelector('.candidate-card-body');
+  body.innerHTML = '';
+  body.textContent = candidate.response;
+
+  const meta = card.querySelector('.candidate-card-meta');
+  meta.textContent = `${candidate.tokens} tok \u00b7 ${candidate.wallMs ?? candidate.elapsed_ms}ms \u00b7 ${candidate.tps} t/s`;
+
+  // Make this card immediately selectable
+  card.addEventListener('click', () => {
+    // Remove selected from all cards and add to this one
+    pickerEl._cardsRow.querySelectorAll('.candidate-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+
+    // Enable the select button if not already enabled
+    const selectBtn = pickerEl._actionsRow.querySelector('.btn-candidate-select');
+    if (selectBtn && selectBtn.disabled) {
+      selectBtn.disabled = false;
+      selectBtn.textContent = 'Use selected response';
+    }
+
+    // Store the selected candidate index
+    const candidateIndex = allCandidates.findIndex(c => c.skill === candidate.skill);
+    pickerEl._selectedIndex = candidateIndex;
+  });
+
+  scrollBottom();
+}
+
+function activateCandidatePicker(pickerEl, candidates, onResolve) {
+  let selectedIndex = 0;
+  let resolved = false;
+
+  function resolve(chosen) {
+    if (resolved) return;
+    resolved = true;
+    onResolve(chosen ?? candidates[0]);
+  }
+
+  const label = pickerEl.querySelector('.candidate-picker-label');
+  if (label) label.textContent = `${candidates.length} skills matched \u2014 pick the best response:`;
+
+  const cards = Array.from(pickerEl._cardsRow.querySelectorAll('.candidate-card'));
+  if (cards[0]) cards[0].classList.add('selected');
+
+  cards.forEach((card, i) => {
+    card.addEventListener('click', () => {
+      cards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedIndex = i;
+    });
+  });
+
+  const actionsRow = pickerEl._actionsRow;
+  actionsRow.innerHTML = '';
+
+  const selectBtn = document.createElement('button');
+  selectBtn.className = 'btn-candidate-select';
+  selectBtn.textContent = 'Use selected';
+  selectBtn.addEventListener('click', () => resolve(candidates[selectedIndex]));
+  actionsRow.appendChild(selectBtn);
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.className = 'btn-candidate-dismiss';
+  dismissBtn.textContent = 'Use default';
+  dismissBtn.title = "Use the highest-priority skill's response";
+  dismissBtn.addEventListener('click', () => resolve(null));
+  actionsRow.appendChild(dismissBtn);
+
+  const hint = document.createElement('span');
+  hint.className = 'candidate-hint';
+  hint.textContent = 'Closing this session uses the default';
+  actionsRow.appendChild(hint);
+
+  pickerEl._autoResolve = () => resolve(null);
+}
+
 
 /* ── Fallback plain message (no turn controls) ── */
 function appendMsgFallback(role, text, meta = null) {

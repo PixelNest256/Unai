@@ -59,8 +59,9 @@ def _process_for_web(user_input: str) -> dict:
 @app.route("/api/chat/sse", methods=["POST"])
 def chat_sse():
     """
-    Server-Sent Events エンドポイント。
-    Skill マッチング・レスポンス生成の進捗を逐次 SSE で返す。
+    Server-Sent Events endpoint.
+    Streams Skill matching/responding progress, then emits all candidate results.
+    The client picks one candidate; the chosen result is committed via /api/chat/commit.
     Body: { message, session_id }
     """
     data       = request.get_json()
@@ -71,32 +72,57 @@ def chat_sse():
         return jsonify({"error": "empty"}), 400
 
     def generate():
-        final_result = None
+        candidates = []  # accumulated in arrival order
+
         for event in process_streamed(user_input):
-            if event["phase"] == "done":
-                final_result = {k: v for k, v in event.items() if k != "phase"}
-                if final_result.get("response") is None:
-                    final_result["response"] = NO_SKILL_MESSAGE
-            elif event["phase"] == "no_match":
-                # どの Skill にもマッチしなかった場合もセッションに保存するため result を作る
-                final_result = {
+            phase = event["phase"]
+
+            if phase == "matched_skills":
+                # Forward immediately so the UI can render placeholder cards
+                yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+
+            elif phase == "candidate":
+                candidate = {k: v for k, v in event.items() if k != "phase"}
+                if candidate.get("response") is None:
+                    candidate["response"] = NO_SKILL_MESSAGE
+                candidates.append(candidate)
+                # Forward each candidate as it arrives so the UI can fill cards progressively
+                yield "data: " + json.dumps({"phase": "candidate", **candidate}, ensure_ascii=False) + "\n\n"
+
+            elif phase == "no_match":
+                no_match_result = {
                     "response":   NO_SKILL_MESSAGE,
                     "skill":      None,
                     "tokens":     0,
                     "elapsed_ms": 0,
                     "tps":        0,
                 }
-            yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                if session_id:
+                    now  = datetime.now().isoformat(timespec="seconds")
+                    sess = db_get_session(session_id)
+                    if sess:
+                        db_append_turn(session_id, user_input, no_match_result, now)
+                        if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
+                            db_auto_title(session_id, user_input, now)
+                yield "data: " + json.dumps(event, ensure_ascii=False) + "\n\n"
+                return
 
-        # セッション保存
-        if final_result and session_id:
-            now = datetime.now().isoformat(timespec="seconds")
-            sess = db_get_session(session_id)
-            if sess:
-                turn_result = db_append_turn(session_id, user_input, final_result, now)
-                # Auto-title from first user message
-                if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
-                    db_auto_title(session_id, user_input, now)
+            elif phase == "done":
+                # All candidates have arrived — decide how to finalise
+                if len(candidates) == 1:
+                    # Single match: auto-commit, no user selection needed
+                    result = candidates[0]
+                    if session_id:
+                        now  = datetime.now().isoformat(timespec="seconds")
+                        sess = db_get_session(session_id)
+                        if sess:
+                            db_append_turn(session_id, user_input, result, now)
+                            if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
+                                db_auto_title(session_id, user_input, now)
+                    yield "data: " + json.dumps({"phase": "committed", **result}, ensure_ascii=False) + "\n\n"
+                elif len(candidates) > 1:
+                    # Multiple matches: client picks one, then calls /api/chat/commit
+                    yield "data: " + json.dumps({"phase": "pick"}, ensure_ascii=False) + "\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -153,6 +179,33 @@ def chat():
                 db_auto_title(session_id, user_input, now)
 
     return jsonify(result)
+
+
+@app.route("/api/chat/commit", methods=["POST"])
+def chat_commit():
+    """
+    Commit a user-selected candidate result to the session.
+    Called by the client after the user picks a response from the multi-candidate picker.
+    Body: { session_id, message, result: { response, skill, tokens, elapsed_ms, tps } }
+    """
+    data       = request.get_json()
+    session_id = data.get("session_id", "").strip()
+    user_input = data.get("message", "").strip()
+    result     = data.get("result", {})
+
+    if not user_input or not session_id or not result:
+        return jsonify({"error": "missing fields"}), 400
+
+    sess = db_get_session(session_id)
+    if not sess:
+        return jsonify({"error": "session not found"}), 404
+
+    now = datetime.now().isoformat(timespec="seconds")
+    turn_result = db_append_turn(session_id, user_input, result, now)
+    if sess.get("title") == "New Chat" and len(sess.get("turns", [])) == 0:
+        db_auto_title(session_id, user_input, now)
+
+    return jsonify({"ok": True, "turn": turn_result})
 
 
 @app.route("/api/chat/regenerate", methods=["POST"])

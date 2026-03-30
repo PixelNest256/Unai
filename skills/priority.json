@@ -8,5 +8,7 @@
     "valves_test",
     "ddgs_chatbot"
   ],
-  "disabled": []
+  "disabled": [
+    "valves_test"
+  ]
 }

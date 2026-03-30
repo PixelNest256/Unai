@@ -325,42 +325,87 @@ def process(user_input: str) -> dict:
 
 def process_streamed(user_input: str):
     """
-    Sequentially yield Skill matching/execution process via generator.
-    Each yield is a dictionary:
-      {"phase": "matching", "skill": name}          # During match() judgment
-      {"phase": "responding", "skill": name}        # During respond() call
-      {"phase": "done", **make_result(...)}           # Complete (normal result dictionary)
-      {"phase": "no_match"}                          # Nothing matched
+    Yield Skill matching/execution progress as a generator.
+
+    Protocol:
+      {"phase": "matched_skills", "skills": [name, ...]}   # All match() done; skills that returned True
+      {"phase": "candidate", "skill": name, ...result}     # respond() finished for one skill (arrival order)
+      {"phase": "done"}                                     # All candidates sent
+      {"phase": "no_match"}                                 # Nothing matched
+
+    All match() calls run sequentially first, then all respond() calls run
+    concurrently via threads.  Candidates are yielded in completion order so
+    the UI can stream cards as they arrive.
     """
-    # Return slash commands immediately without progress
+    import threading
+    import queue as _queue
+
+    # ── Slash commands: single candidate, no threading needed ──
     slash = process_slash_command(user_input)
     if slash:
-        yield {"phase": "done", **slash}
+        yield {"phase": "matched_skills", "skills": [slash["skill"]]}
+        yield {"phase": "candidate", **slash}
+        yield {"phase": "done"}
         return
 
-    priority = load_priority()
-    for name in priority["order"]:
+    # ── Phase 1: run all match() sequentially, collect matched skills ──
+    priority   = load_priority()
+    matched    = []   # list of (priority_index, name, mod)
+    for idx, name in enumerate(priority["order"]):
         if name in priority.get("disabled", []):
             continue
         mod = load_skill(name)
         if mod is None:
             continue
         try:
-            yield {"phase": "matching", "skill": name}
-            if not mod.match(user_input):
-                continue
-            yield {"phase": "responding", "skill": name}
+            if mod.match(user_input):
+                matched.append((idx, name, mod))
+        except Exception:
+            continue
+
+    if not matched:
+        yield {"phase": "no_match"}
+        return
+
+    # Announce matched skills so UI can show placeholder cards immediately
+    yield {"phase": "matched_skills", "skills": [name for _, name, _ in matched]}
+
+    # ── Phase 2: run all respond() concurrently, yield as they finish ──
+    result_queue: _queue.Queue = _queue.Queue()
+
+    def _run(idx, name, mod):
+        try:
             start    = time.perf_counter()
             response = mod.respond(user_input)
             elapsed  = time.perf_counter() - start
             if response is None:
-                continue
-            yield {"phase": "done", **make_result(response, name, elapsed)}
-            return
+                result_queue.put((idx, name, None))
+            else:
+                result_queue.put((idx, name, make_result(response, name, elapsed)))
         except Exception:
-            continue
+            result_queue.put((idx, name, None))
 
-    yield {"phase": "no_match"}
+    threads = [
+        threading.Thread(target=_run, args=(idx, name, mod), daemon=True)
+        for idx, name, mod in matched
+    ]
+    for t in threads:
+        t.start()
+
+    received = 0
+    candidates_found = 0
+    total = len(matched)
+    while received < total:
+        idx, name, result = result_queue.get()
+        received += 1
+        if result is not None:
+            candidates_found += 1
+            yield {"phase": "candidate", **result}
+
+    if candidates_found > 0:
+        yield {"phase": "done"}
+    else:
+        yield {"phase": "no_match"}
 
 # ─── SQLite: DB init ──────────────────────────────────────────────
 

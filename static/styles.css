@@ -1308,3 +1308,171 @@ header {
     opacity: 0;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   MULTI-CANDIDATE PICKER
+═══════════════════════════════════════════════ */
+
+/* Wrapper that lives in the chat column, aligned like a bot message */
+.candidate-picker {
+  align-self: flex-start;
+  width: 100%;
+  animation: slideUp 0.2s ease;
+}
+
+.candidate-picker-label {
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+/* Horizontal scrolling row of cards */
+.candidate-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.candidate-cards::-webkit-scrollbar {
+  height: 4px;
+}
+
+.candidate-cards::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 99px;
+}
+
+/* Individual candidate card */
+.candidate-card {
+  flex-shrink: 0;
+  width: min(340px, 72vw);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition),
+              box-shadow var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.candidate-card:hover {
+  border-color: var(--border2);
+  background: var(--surface2);
+}
+
+.candidate-card.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.candidate-card.selected {
+  border-color: var(--accent);
+  background: rgba(127, 255, 110, 0.04);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+.candidate-card-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.candidate-skill-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-dim);
+  border: 1px solid var(--accent-dim);
+  border-radius: 4px;
+  padding: 1px 6px;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.candidate-card-body {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.candidate-card-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.candidate-card-body::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 99px;
+}
+
+.candidate-card-meta {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Action row below the cards */
+.candidate-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-candidate-select {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-dim);
+  background: rgba(127, 255, 110, 0.07);
+  color: var(--accent);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-candidate-select:hover {
+  background: rgba(127, 255, 110, 0.18);
+}
+
+.btn-candidate-select:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn-candidate-dismiss {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-candidate-dismiss:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.candidate-hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-left: auto;
+  opacity: 0.7;
+}
