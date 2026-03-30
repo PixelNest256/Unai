@@ -215,6 +215,22 @@ def respond(text: str) -> str | None:
 - `respond()` returns the response text
 - If `respond()` returns `None`, the Skill is skipped
 
+**Using Valves (Optional):**
+
+If your Skill needs user-configurable settings, you can use the `load_valves()` and `get_valve_definitions()` functions. These are automatically injected into your Skill module - no imports needed:
+
+```python
+def respond(text: str) -> str:
+    # Load valve values and definitions
+    values = load_valves()
+    definitions = get_valve_definitions()
+    
+    # Access a specific valve value
+    api_key = values.get("api_key", "")
+    
+    return f"Using API key: {api_key}"
+```
+
 ### `meta.json`
 
 ```json
