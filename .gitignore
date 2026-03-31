@@ -64,3 +64,6 @@ settings.json
 # Deprecated batch scripts
 setup_venv.bat
 run.bat
+
+# ignore
+ignore/
