@@ -309,8 +309,9 @@ function renderTurn(turnData, stream = false, skipUser = false) {
 
   // ── user message ──
   let userBubble;
+  let userMsg;
   if (!skipUser) {
-    const userMsg = document.createElement('div');
+    userMsg = document.createElement('div');
     userMsg.className = 'msg user';
     userMsg.dataset.turnId = turn_id;
     userBubble = document.createElement('div');
@@ -321,7 +322,14 @@ function renderTurn(turnData, stream = false, skipUser = false) {
   } else {
     // Find the most recent user message (should be the one we just created)
     const userMessages = chatEl.querySelectorAll('.msg.user');
-    userBubble = userMessages.length > 0 ? userMessages[userMessages.length - 1].querySelector('.bubble') : null;
+    userMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+    userBubble = userMsg ? userMsg.querySelector('.bubble') : null;
+  }
+
+  // ── user action bar (edit button only) ──
+  if (userMsg && userBubble) {
+    const userActionBar = buildUserActionBar(turn_id, userBubble, userMsg);
+    chatEl.insertBefore(userActionBar, userMsg.nextSibling);
   }
 
   // ── bot message ──
@@ -336,9 +344,9 @@ function renderTurn(turnData, stream = false, skipUser = false) {
 
   chatEl.appendChild(botMsg);
 
-  // ── action bar ──
-  const actionBar = buildActionBar(turn_id, branch_index, branch_count, userBubble, botBubble, metaEl, botMsg);
-  chatEl.insertBefore(actionBar, botMsg.nextSibling);
+  // ── bot action bar (copy, regenerate, branch nav) ──
+  const botActionBar = buildBotActionBar(turn_id, branch_index, branch_count, userBubble, botBubble, metaEl, botMsg);
+  chatEl.insertBefore(botActionBar, botMsg.nextSibling);
 
   // Fill bot content (stream or instant)
   if (stream) {
@@ -348,8 +356,34 @@ function renderTurn(turnData, stream = false, skipUser = false) {
   }
 }
 
-/* ── Build action bar ──────────────────────────── */
-function buildActionBar(turn_id, branchIndex, branchCount, userBubble, botBubble, metaEl, botMsg) {
+/* ── Build user action bar (edit button only) ──────────────────────────── */
+function buildUserActionBar(turn_id, userBubble, userMsg) {
+  const actionBar = document.createElement('div');
+  actionBar.className = 'turn-actions user-actions';
+  actionBar.dataset.turnId = turn_id;
+
+  const editBtn = makeActionBtn(
+    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>Edit`,
+    () => startEdit(turn_id, userBubble, null, null, actionBar)
+  );
+  actionBar.appendChild(editBtn);
+
+  // Hover wiring for user message
+  let hoverCount = 0;
+  const showActions = () => { hoverCount++; actionBar.classList.add('visible'); };
+  const hideActions = () => { hoverCount = Math.max(0, hoverCount - 1); if (hoverCount === 0) actionBar.classList.remove('visible'); };
+  [userMsg, actionBar].forEach(el => {
+    el.addEventListener('mouseenter', showActions);
+    el.addEventListener('mouseleave', hideActions);
+  });
+
+  return actionBar;
+}
+
+/* ── Build bot action bar (copy, regenerate, branch nav) ─────────────────── */
+function buildBotActionBar(turn_id, branchIndex, branchCount, userBubble, botBubble, metaEl, botMsg) {
   const actionBar = document.createElement('div');
   actionBar.className = 'turn-actions';
   actionBar.dataset.turnId = turn_id;
@@ -378,15 +412,7 @@ function buildActionBar(turn_id, branchIndex, branchCount, userBubble, botBubble
   );
   actionBar.appendChild(regenBtn);
 
-  const editBtn = makeActionBtn(
-    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-    </svg>Edit`,
-    () => startEdit(turn_id, userBubble, botBubble, metaEl, actionBar)
-  );
-  actionBar.appendChild(editBtn);
-
-  // Hover wiring
+  // Hover wiring for bot message
   let hoverCount = 0;
   const showActions = () => { hoverCount++; actionBar.classList.add('visible'); };
   const hideActions = () => { hoverCount = Math.max(0, hoverCount - 1); if (hoverCount === 0) actionBar.classList.remove('visible'); };
@@ -484,6 +510,15 @@ async function regenerateTurn(turn_id, bar, userBubble, botBubble, metaEl) {
 function startEdit(turn_id, userBubble, botBubble, metaEl, actionBar) {
   if (isWaiting) return;
 
+  // Find bot message elements if not provided
+  if (!botBubble || !metaEl) {
+    const botMsg = document.querySelector(`.msg.bot[data-turn-id="${turn_id}"]`);
+    if (botMsg) {
+      botBubble = botBubble || botMsg.querySelector('.bubble');
+      metaEl = metaEl || botMsg.querySelector('.turn-meta');
+    }
+  }
+
   const original = userBubble.textContent;
   const textarea = document.createElement('textarea');
   textarea.className = 'user-edit-area';
@@ -526,6 +561,18 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
   textarea.replaceWith(userBubble);
   row.remove();
 
+  // Find bot message elements if not provided
+  if (!botBubble || !metaEl) {
+    const botMsg = document.querySelector(`.msg.bot[data-turn-id="${turn_id}"]`);
+    if (botMsg) {
+      botBubble = botBubble || botMsg.querySelector('.bubble');
+      metaEl = metaEl || botMsg.querySelector('.turn-meta');
+    }
+  }
+
+  // Find the bot action bar for branch navigation updates
+  const botActionBar = document.querySelector(`.turn-actions:not(.user-actions)[data-turn-id="${turn_id}"]`);
+
   botBubble.innerHTML = '';
   const ind = document.createElement('div');
   ind.className = 'typing-indicator';
@@ -548,14 +595,27 @@ async function submitEdit(turn_id, textarea, userBubble, botBubble, metaEl, acti
     if (editRow) editRow.remove();
 
     botBubble.innerHTML = '';
-    const nav = actionBar.querySelector('.branch-nav');
-    updateBranchNav(nav, data.branch_index, data.branch_count, turn_id, userBubble, botBubble, metaEl);
-    updateMetaEl(metaEl, data);
-    if (toggleStreaming.checked) await typeText(botBubble, data.response);
-    else botBubble.textContent = data.response;
+    const nav = botActionBar ? botActionBar.querySelector('.branch-nav') : null;
+
+    console.log('Debug - botBubble:', botBubble);
+    console.log('Debug - metaEl:', metaEl);
+    console.log('Debug - nav:', nav);
+    console.log('Debug - data:', data);
+
+    if (nav) {
+      updateBranchNav(nav, data.branch_index, data.branch_count, turn_id, userBubble, botBubble, metaEl);
+    }
+    if (metaEl) {
+      updateMetaEl(metaEl, data);
+    }
+    if (toggleStreaming.checked) await typeText(botBubble, data.response || data.bot_response || data.answer || data.text);
+    else botBubble.textContent = data.response || data.bot_response || data.answer || data.text || 'No response received';
 
     loadSessionList();
-  } catch { botBubble.textContent = 'Edit failed.'; }
+  } catch (error) {
+    console.error('Edit failed:', error);
+    botBubble.textContent = 'Edit failed: ' + (error.message || 'Unknown error');
+  }
 
   isWaiting = false;
 }
@@ -565,8 +625,12 @@ function removeTurnsAfter(turn_id) {
   const remaining = Array.from(chatEl.children);
   let removing = false;
   for (const el of remaining) {
-    if (removing) { chatEl.removeChild(el); }
-    else if (el.classList.contains('turn-actions') && el.dataset.turnId === turn_id) {
+    if (removing) {
+      chatEl.removeChild(el);
+    }
+    else if (el.classList.contains('turn-actions') &&
+      el.dataset.turnId === turn_id &&
+      !el.classList.contains('user-actions')) {
       removing = true;
     }
   }
