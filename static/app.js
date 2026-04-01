@@ -370,6 +370,15 @@ function buildUserActionBar(turn_id, userBubble, userMsg) {
   );
   actionBar.appendChild(editBtn);
 
+  const copyBtn = makeActionBtn(
+    `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+      <path d="M1 8V2a1 1 0 0 1 1-1h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>Copy`,
+    async () => { await navigator.clipboard.writeText(userBubble.textContent); showToast('Copied'); }
+  );
+  actionBar.appendChild(copyBtn);
+
   // Hover wiring for user message
   let hoverCount = 0;
   const showActions = () => { hoverCount++; actionBar.classList.add('visible'); };
