@@ -250,6 +250,9 @@ async function deleteSession(id) {
     currentSessionId = null;
     clearChat();
     headerTitle.textContent = 'New Chat';  // ← タイトルをリセット
+
+    // Clear URL when current session is deleted
+    updateSessionUrl(null);
   }
   loadSessionList();
   showToast('Chat deleted');
@@ -266,6 +269,9 @@ async function loadSession(id) {
     while (chatEl.firstChild) chatEl.removeChild(chatEl.firstChild);
     currentSessionId = id;
     headerTitle.textContent = sess.title || 'New Chat';
+
+    // Update URL to reflect the current session
+    updateSessionUrl(id);
 
     if (sess.turns && sess.turns.length > 0) {
       enterChatMode();
@@ -290,6 +296,9 @@ newChatBtn.addEventListener('click', () => {
   clearChat();
   headerTitle.textContent = 'New Chat';  // ← タイトルをリセット
   document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
+
+  // Clear URL when starting new chat
+  updateSessionUrl(null);
 });
 
 /* ── Clear chat view ──────────────────────────── */
@@ -1199,7 +1208,72 @@ function escHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/* ── URL Parameter Handling ───────────────────── */
+function getUrlParameter(name) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
+
+function updateSessionUrl(sessionId) {
+  if (!sessionId) {
+    // Clear session parameter when no session is active
+    const url = new URL(window.location);
+    url.searchParams.delete('session_id');
+    url.pathname = '/';
+    window.history.replaceState({}, '', url);
+    return;
+  }
+
+  const url = new URL(window.location);
+  url.searchParams.set('session_id', sessionId);
+  url.pathname = '/';
+  window.history.replaceState({}, '', url);
+}
+
+function getSessionIdFromUrl() {
+  // Check for session_id in URL parameters first
+  let sessionId = getUrlParameter('session_id');
+
+  // If not found, check for session_id in data attribute (from Flask route)
+  if (!sessionId) {
+    const mainEl = document.getElementById('main');
+    if (mainEl) {
+      sessionId = mainEl.dataset.sessionId;
+    }
+  }
+
+  // If still not found, check if we're on a /session/ URL path
+  if (!sessionId) {
+    const pathParts = window.location.pathname.split('/');
+    const sessionIndex = pathParts.indexOf('session');
+    if (sessionIndex !== -1 && pathParts[sessionIndex + 1]) {
+      sessionId = pathParts[sessionIndex + 1];
+    }
+  }
+
+  return sessionId;
+}
+
+async function loadSessionFromUrl() {
+  const sessionId = getSessionIdFromUrl();
+  if (sessionId) {
+    try {
+      await loadSession(sessionId);
+      return true;
+    } catch (error) {
+      console.error('Failed to load session from URL:', error);
+      showToast('Failed to load session from URL');
+    }
+  }
+  return false;
+}
+
 /* ── Init ─────────────────────────────────────── */
 applyPrefs();
-loadSessionList();
-inputElLanding.focus();
+loadSessionList().then(() => {
+  loadSessionFromUrl().then(sessionLoaded => {
+    if (!sessionLoaded) {
+      inputElLanding.focus();
+    }
+  });
+});

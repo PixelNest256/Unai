@@ -130,8 +130,9 @@ def chat_sse():
 # ─── Routes: pages ───────────────────────────────────────────────
 
 @app.route("/")
-def index():
-    return render_template("index.html")
+@app.route("/session/<session_id>")
+def index(session_id=None):
+    return render_template("index.html", session_id=session_id)
 
 @app.route("/skills")
 def skills_page():
