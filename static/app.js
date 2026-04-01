@@ -774,7 +774,7 @@ async function send() {
                   const sess = await sr.json();
                   const lastTurn = sess.turns[sess.turns.length - 1];
                   if (lastTurn && lastTurn.branch.user.content === text) {
-                    renderTurn(lastTurn, toggleStreaming.checked, true);
+                    renderTurn(lastTurn, false, true);
                   } else {
                     appendMsgFallback('bot', result.response, result);
                   }
@@ -839,7 +839,7 @@ async function send() {
           const sess = await sr.json();
           const lastTurn = sess.turns[sess.turns.length - 1];
           if (lastTurn && lastTurn.branch.user.content === text) {
-            renderTurn(lastTurn, toggleStreaming.checked, true);
+            renderTurn(lastTurn, false, true);
           } else {
             appendMsgFallback('bot', result.response, result);
           }
@@ -1026,7 +1026,7 @@ function setupEarlySelection(pickerEl, candidates, onResolve) {
   pickerEl._autoResolve = () => resolve(null);
 }
 
-function fillCandidateCard(pickerEl, candidate, allCandidates, onResolve) {
+async function fillCandidateCard(pickerEl, candidate, allCandidates, onResolve) {
   const card = pickerEl._cardsRow.querySelector(`[data-skill="${candidate.skill}"]`);
   if (!card) return;
   card.classList.remove('loading');
@@ -1034,7 +1034,13 @@ function fillCandidateCard(pickerEl, candidate, allCandidates, onResolve) {
 
   const body = card.querySelector('.candidate-card-body');
   body.innerHTML = '';
-  body.textContent = candidate.response;
+
+  // Apply streaming effect when displaying candidate response (if enabled)
+  if (toggleStreaming.checked) {
+    await typeText(body, candidate.response);
+  } else {
+    body.textContent = candidate.response;
+  }
 
   const meta = card.querySelector('.candidate-card-meta');
   meta.textContent = `${candidate.tokens} tok \u00b7 ${candidate.wallMs ?? candidate.elapsed_ms}ms \u00b7 ${candidate.tps} t/s`;
